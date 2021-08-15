@@ -639,6 +639,140 @@ class BaseViz:
         security_manager.raise_for_access(viz=self)
 
 
+from superset.jinja_context import get_template_processor
+import markdown
+class MarkupViz(BaseViz):
+
+    """Use html or markdown with Jinja and queries to create a free form widget"""
+
+    viz_type = "markup"
+    verbose_name = _("Markup")
+    is_timeseries = False
+
+    def process_metrics(self) -> None:
+        """Process form data and store parsed column configs.
+        1. Determine query mode based on form_data params.
+             - Use `query_mode` if it has a valid value
+             - Set as RAW mode if `all_columns` is set
+             - Otherwise defaults to AGG mode
+        2. Determine output columns based on query mode.
+        """
+        # Verify form data first: if not specifying query mode, then cannot have both
+        # GROUP BY and RAW COLUMNS.
+        fd = self.form_data
+        if (
+            not fd.get("query_mode")
+            and fd.get("all_columns")
+            and (fd.get("groupby") or fd.get("metrics") or fd.get("percent_metrics"))
+        ):
+            raise QueryObjectValidationError(
+                _(
+                    "You cannot use [Columns] in combination with "
+                    "[Group By]/[Metrics]/[Percentage Metrics]. "
+                    "Please choose one or the other."
+                )
+            )
+
+        super().process_metrics()
+
+        self.query_mode: QueryMode = QueryMode.get(fd.get("query_mode")) or (
+            # infer query mode from the presence of other fields
+            QueryMode.RAW
+            if len(fd.get("all_columns") or []) > 0
+            else QueryMode.AGGREGATE
+        )
+
+        columns: List[str] = []  # output columns sans time and percent_metric column
+        percent_columns: List[str] = []  # percent columns that needs extra computation
+
+        if self.query_mode == QueryMode.RAW:
+            columns = utils.get_metric_names(fd.get("all_columns") or [])
+        else:
+            columns = utils.get_metric_names(self.groupby + (fd.get("metrics") or []))
+            percent_columns = utils.get_metric_names(fd.get("percent_metrics") or [])
+
+        self.columns = columns
+        self.percent_columns = percent_columns
+        self.is_timeseries = self.should_be_timeseries()
+
+    def should_be_timeseries(self) -> bool:
+        fd = self.form_data
+        # TODO handle datasource-type-specific code in datasource
+        conditions_met = (fd.get("granularity") and fd.get("granularity") != "all") or (
+            fd.get("granularity_sqla") and fd.get("time_grain_sqla")
+        )
+        if fd.get("include_time") and not conditions_met:
+            raise QueryObjectValidationError(
+                _("Pick a granularity in the Time section or " "uncheck 'Include Time'")
+            )
+        return bool(fd.get("include_time"))
+
+    def query_obj(self) -> QueryObjectDict:
+        d = super().query_obj()
+        fd = self.form_data
+        if self.query_mode == QueryMode.RAW:
+            d["columns"] = fd.get("all_columns")
+            order_by_cols = fd.get("order_by_cols") or []
+            d["orderby"] = [json.loads(t) for t in order_by_cols]
+            # must disable groupby and metrics in raw mode
+            d["groupby"] = []
+            d["metrics"] = []
+            # raw mode does not support timeseries queries
+            d["timeseries_limit_metric"] = None
+            d["timeseries_limit"] = None
+            d["is_timeseries"] = None
+        else:
+            sort_by = fd.get("timeseries_limit_metric")
+            if sort_by:
+                sort_by_label = utils.get_metric_name(sort_by)
+                if sort_by_label not in utils.get_metric_names(d["metrics"]):
+                    d["metrics"].append(sort_by)
+                d["orderby"] = [(sort_by, not fd.get("order_desc", True))]
+            elif d["metrics"]:
+                # Legacy behavior of sorting by first metric by default
+                first_metric = d["metrics"][0]
+                d["orderby"] = [(first_metric, not fd.get("order_desc", True))]
+        return d
+
+#    def query_obj(self):
+#        return None
+
+#    def get_df(self, query_obj=None):
+#        return None
+
+    def get_code(self, df):
+        code = self.form_data.get("code", "")
+        logger.warning(f"XXXXXXXXXXXXXXXXXXXXXXXX: {code}")
+        logger.warning(f"XXXXXXXXXXXXXXXXXXXXXXXX: {df}")
+        processor = get_template_processor(self.datasource.database)
+        ret = processor.process_template(code, data=df)
+        logger.warning(f"XXXXXXXXXXXXXXXXXXXXXXXX: {ret}")
+        return ret
+
+    def get_data(self, df):
+        columns, percent_columns = self.columns, self.percent_columns
+        if DTTM_ALIAS in df and self.is_timeseries:
+            columns = [DTTM_ALIAS] + columns
+        df = pd.concat(
+            [
+                df[columns],  
+                (df[percent_columns].div(df[percent_columns].sum()).add_prefix("%")),
+            ],
+            axis=1,
+        )
+        markup_type = self.form_data.get("markup_type")
+        code = self.get_code(df)
+        if markup_type == "markdown":
+            code = markdown(code, extensions=['tables'])
+            return None
+
+#        return self.handle_js_int_overflow( 
+#            dict(html=code, records=df.to_dict(orient="records"), columns=list(df.columns))
+#        )     
+        return dict(html=code, records=df.to_dict(orient="records"), columns=list(df.columns))
+#        return dict(html=code)
+
+
 class TableViz(BaseViz):
 
     """A basic html table that is sortable and searchable"""
