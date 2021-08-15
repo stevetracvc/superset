@@ -70,6 +70,7 @@
     "@superset-ui/chart-controls": "^0.17.84",
     "@superset-ui/core": "^0.17.81",
     "@superset-ui/legacy-plugin-chart-markup-data": "^0.14.9",
+    "@superset-ui/plugin-chart-table-write": "^0.17.84",
     "@superset-ui/legacy-plugin-chart-calendar": "^0.17.84",
     "@superset-ui/legacy-plugin-chart-chord": "^0.17.84",
     "@superset-ui/legacy-plugin-chart-country-map": "^0.17.84",
