@@ -3148,7 +3148,8 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
                 session.query(FilterSet)
                     .filter_by(dashboard_id=dashboard_id,
                         user_id=g.user.get_id(), deleted=None)
-                        .all()
+                    .order_by(FilterSet.title)
+                    .all()
             )
             logger.info(f"XXXXXXXXXX records returned: {filter_sets}")
             return json_success(json.dumps([x.data for x in filter_sets]))
