@@ -92,7 +92,7 @@ from superset.exceptions import (
 )
 from superset.extensions import async_query_manager, cache_manager
 from superset.jinja_context import get_template_processor
-from superset.models.core import Database, FavStar, Log
+from superset.models.core import Database, FavStar, Log, FilterSet
 from superset.models.dashboard import Dashboard
 from superset.models.datasource_access_request import DatasourceAccessRequest
 from superset.models.slice import Slice
@@ -3102,3 +3102,53 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
                 "Failed to fetch schemas allowed for csv upload in this database! "
                 "Please contact your Superset Admin!"
             )
+
+    # @has_access_api
+    @event_logger.log_this
+    @expose("/trac/filter_set/<int:dashboard_id>/",
+            methods=["GET", "PUT", "POST"])
+    def filter_set(  # pylint: disable=no-self-use
+        self, dashboard_id: int
+    ) -> FlaskResponse:
+        """Save and Load Filter Sets by User"""
+        if not g.user.get_id():
+            return json_error_response("ERROR: Filter Set access denied", status=403)
+        session = db.session()
+        # Load all for this user and dashboard
+        if request.method == "GET":
+            filter_sets = (
+                session.query(FilterSet)
+                    .filter_by(dashboard_id=dashboard_id,
+                        user_id=g.user.get_id(), deleted=None)
+                    .order_by(FilterSet.title)
+                    .all()
+            )
+            logger.info(f"XXXXXXXXXX records returned: {filter_sets}")
+            return json_success(json.dumps([x.data for x in filter_sets]))
+        # "delete" by marking delete date
+        elif request.method == "PUT":
+            data = request.get_json(force=True)
+            logger.info(f"XXXXXXXXXX deleting filter set id: {data['fs_id']}")
+            (session.query(FilterSet)
+                .filter_by(id=data['fs_id'])
+                .update({"deleted": datetime.now()}))
+            session.commit()
+            return json_success(json.dumps({"deleted": data['fs_id']}))
+        # create a new filter set
+        elif request.method == "POST":
+            data = request.get_json(force=True)
+            logger.info(f"request get_json: {data}")
+            session.add(
+                FilterSet(
+                    dashboard_id=dashboard_id,
+                    user_id=g.user.get_id(),
+                    dttm=datetime.now(),
+                    title=data["filterSetTitle"],
+                    short_url=data["shortUrl"],
+                    description=data["description"],
+                )
+            )
+            session.commit()
+            return json_success(json.dumps({"inserted": True}))
+
+        return json_success(json.dumps({"action": "nothing"}))

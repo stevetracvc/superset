@@ -766,6 +766,51 @@ class FavStar(Model):  # pylint: disable=too-few-public-methods
     dttm = Column(DateTime, default=datetime.utcnow)
 
 
+class FilterSet(Model):
+
+    """The filter set object!"""
+    __tablename__ = "filter_set"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("ab_user.id"))
+    dashboard_id = Column(Integer, ForeignKey("dashboards.id"))
+
+    title = Column(String(500))
+    short_url = Column(utils.MediumText())
+    description = Column(Text)
+
+    dttm = Column(DateTime, default=datetime.utcnow)
+    deleted = Column(DateTime, default=None)
+
+    def __repr__(self) -> str:
+        return f"FilterSet<{self.id}>"
+
+    @property
+    def sqla_metadata(self) -> None:
+        # pylint: disable=no-member
+        meta = MetaData(bind=self.get_sqla_engine())
+        meta.reflect()
+
+    @property
+    def digest(self) -> str:
+        """
+        Returns a MD5 HEX digest that makes this filterset unique
+        """
+        unique_string = f"{self.filterset_title}.{self.url}.{self.description}"
+        return md5_sha_from_str(unique_string)
+
+    @property
+    def data(self) -> Dict[str, Any]:
+        return {
+            "filterSetId": self.id,
+            "filterSetTitle": self.title,
+            "shortUrl": self.short_url,
+            "description": self.description,
+            "userId": self.user_id,
+            "dashboardId": self.dashboard_id,
+        }
+
+
 # events for updating tags
 if is_feature_enabled("TAGGING_SYSTEM"):
     sqla.event.listen(FavStar, "after_insert", FavStarUpdater.after_insert)

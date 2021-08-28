@@ -28,6 +28,10 @@ import ShareMenuItems from 'src/dashboard/components/menu/ShareMenuItems';
 import CssEditor from 'src/dashboard/components/CssEditor';
 import RefreshIntervalModal from 'src/dashboard/components/RefreshIntervalModal';
 import SaveModal from 'src/dashboard/components/SaveModal';
+
+// import SaveFiltersModal from 'src/dashboard/components/FilterSetSaveModal/SaveFiltersModal';
+import FilterSetSaveModal,
+  { SAVE_TYPE_NEWFILTER } from 'src/dashboard/components/FilterSetSaveModal/FilterSetSaveModal';
 import injectCustomCss from 'src/dashboard/util/injectCustomCss';
 import { SAVE_TYPE_NEWDASHBOARD } from 'src/dashboard/util/constants';
 import FilterScopeModal from 'src/dashboard/components/filterscope/FilterScopeModal';
@@ -84,6 +88,7 @@ const MENU_KEYS = {
   EDIT_CSS: 'edit-css',
   DOWNLOAD_AS_IMAGE: 'download-as-image',
   TOGGLE_FULLSCREEN: 'toggle-fullscreen',
+  SAVE_FILTER_SETS: 'save-filter-set',
 };
 
 const DropdownButton = styled.div`
@@ -320,6 +325,23 @@ class HeaderActionsDropdown extends React.PureComponent {
             {getUrlParam(URL_PARAMS.standalone)
               ? t('Exit fullscreen')
               : t('Enter fullscreen')}
+          </Menu.Item>
+        )}
+        {!editMode && (
+          <Menu.Item key={MENU_KEYS.SAVE_FILTER_SETS}>
+            <FilterSetSaveModal
+              addSuccessToast={this.props.addSuccessToast}
+              addDangerToast={this.props.addDangerToast}
+              dashboardId={dashboardId}
+              dashboardTitle={dashboardTitle}
+              dashboardInfo={dashboardInfo}
+              dataMask={dataMask}
+              saveType={SAVE_TYPE_NEWFILTER}
+              layout={layout}
+              triggerNode={
+                <span data-test="save-filters-menu-item">{t('Save/Load Filter Sets')}</span>
+              }
+            />
           </Menu.Item>
         )}
       </Menu>
