@@ -63,8 +63,6 @@ def increment_id(redis_id: str) -> str:
 
 
 class AsyncQueryManager:
-    # pylint: disable=too-many-instance-attributes
-
     MAX_EVENT_COUNT = 100
     STATUS_PENDING = "pending"
     STATUS_RUNNING = "running"
@@ -114,9 +112,7 @@ class AsyncQueryManager:
         self._jwt_secret = config["GLOBAL_ASYNC_QUERIES_JWT_SECRET"]
 
         @app.after_request
-        def validate_session(  # pylint: disable=unused-variable
-            response: Response,
-        ) -> Response:
+        def validate_session(response: Response) -> Response:
             user_id = None
 
             try:
@@ -165,9 +161,9 @@ class AsyncQueryManager:
 
         try:
             return self.parse_jwt(token)
-        except Exception as exc:
-            logger.warning(exc)
-            raise AsyncQueryTokenException("Failed to parse token")
+        except Exception as ex:
+            logger.warning(ex)
+            raise AsyncQueryTokenException("Failed to parse token") from ex
 
     def init_job(self, channel_id: str, user_id: Optional[str]) -> Dict[str, Any]:
         job_id = str(uuid.uuid4())
