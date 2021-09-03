@@ -28,6 +28,8 @@ import { PluginFilterHooks, PluginFilterStylesProps } from '../types';
 interface PluginFilterSelectCustomizeProps {
   max?: number;
   min?: number;
+  stepSize: number;
+  logScale: boolean;
 }
 
 export type PluginFilterRangeQueryFormData = QueryFormData &
