@@ -41,6 +41,8 @@ from superset.extensions import feature_flag_manager
 from superset.utils.core import convert_legacy_filters_into_adhoc, merge_extra_filters
 from superset.utils.memoized import memoized
 
+import logging
+logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from superset.connectors.sqla.models import SqlaTable
     from superset.models.core import Database
@@ -59,6 +61,7 @@ ALLOWED_TYPES = (
     "dict",
     "tuple",
     "set",
+    "DataFrame", # SRM
 )
 COLLECTION_TYPES = ("list", "dict", "tuple", "set")
 
@@ -113,7 +116,7 @@ class ExtraCache:
             return g.user.get_id()
         return None
 
-    def current_username(self, add_to_cache_keys: bool = True) -> Optional[str]:
+    def current_username(self, add_to_cache_keys: bool = True, orig = False) -> Optional[str]:
         """
         Return the username of the user who is currently logged in.
 
@@ -121,6 +124,13 @@ class ExtraCache:
         :returns: The username
         """
 
+        for x in g.user.roles:
+            if x.name == "Intelligence_Admin" and orig == False:
+                uname = self.url_param("current_user_id")
+                if add_to_cache_keys:
+                    self.cache_key_wrapper(uname)
+                logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: Username overridden with: {}".format(uname))
+                return uname
         if g.user and hasattr(g.user, "username"):
             if add_to_cache_keys:
                 self.cache_key_wrapper(g.user.username)
