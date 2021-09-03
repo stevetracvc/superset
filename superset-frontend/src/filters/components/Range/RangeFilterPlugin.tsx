@@ -90,23 +90,27 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   const [row] = data;
   // @ts-ignore
   const { min, max }: { min: number; max: number } = row;
-  const { groupby, defaultValue, inputRef } = formData;
+  const { groupby, defaultValue, inputRef, stepSize, logScale } = formData;
   const [col = ''] = groupby || [];
   const [value, setValue] = useState<[number, number]>(
     defaultValue ?? [min, max],
   );
   const [marks, setMarks] = useState<{ [key: number]: string }>({});
+  const transformScale = (val : number) => logScale ? Math.log10(val) | 0 : val;
+  const inverseScale = (val : number) => logScale ? Math.pow(10, val) : val;
 
+  // value is transformed
   const getBounds = (
     value: [number, number],
   ): { lower: number | null; upper: number | null } => {
     const [lowerRaw, upperRaw] = value;
     return {
-      lower: lowerRaw > min ? lowerRaw : null,
-      upper: upperRaw < max ? upperRaw : null,
+      lower: lowerRaw > transformScale(min) ? lowerRaw : null,
+      upper: upperRaw < transformScale(max) ? upperRaw : null,
     };
   };
 
+  // lower and upper are NOT transformed!!!!
   const getLabel = (lower: number | null, upper: number | null): string => {
     if (lower !== null && upper !== null) {
       return `${numberFormatter(lower)} ≤ x ≤ ${numberFormatter(upper)}`;
@@ -120,38 +124,44 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     return '';
   };
 
+  // lower & upper are transformed
   const getMarks = (
     lower: number | null,
     upper: number | null,
   ): { [key: number]: string } => {
     const newMarks: { [key: number]: string } = {};
     if (lower !== null) {
-      newMarks[lower] = numberFormatter(lower);
+      newMarks[lower] = numberFormatter(inverseScale(lower));
     }
     if (upper !== null) {
-      newMarks[upper] = numberFormatter(upper);
+      newMarks[upper] = numberFormatter(inverseScale(upper));
     }
     return newMarks;
   };
 
   const handleAfterChange = (value: [number, number]): void => {
+    // value is transformed
     setValue(value);
+    // lower & upper are transformed
     const { lower, upper } = getBounds(value);
     setMarks(getMarks(lower, upper));
-
+    // getRangeExtraFormData emits the filter values
+    // label must not be null for badge to work
     setDataMask({
-      extraFormData: getRangeExtraFormData(col, lower, upper),
+      extraFormData: getRangeExtraFormData(col, inverseScale(Number(lower)), inverseScale(Number(upper))),
       filterState: {
         value: lower !== null || upper !== null ? value : null,
-        label: getLabel(lower, upper),
+        label: getLabel(inverseScale(Number(lower)), inverseScale(Number(upper))),
       },
     });
   };
 
   const handleChange = (value: [number, number]) => {
+    // value is transformed
     setValue(value);
   };
 
+  // value is transformed
   useEffect(() => {
     // when switch filter type and queriesData still not updated we need ignore this case (in FilterBar)
     if (row?.min === undefined && row?.max === undefined) {
@@ -168,6 +178,11 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
       </StatusMessage>
     );
   }
+
+  // let stepSizeUsed = stepSize;
+  // if (stepSize === true || (logScale === true && stepSize >= 1)){
+  //   stepSizeUsed = 0.01;
+  // }
   return (
     <FilterPluginStyle height={height} width={width}>
       {Number.isNaN(Number(min)) || Number.isNaN(Number(max)) ? (
@@ -185,13 +200,14 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
           >
             <Slider
               range
-              min={min}
-              max={max}
-              value={value ?? [min, max]}
+              min={transformScale(min) ?? 0}
+              max={transformScale(max)}
+              value={value ?? [transformScale(min) ?? 0, transformScale(max)]}
               onAfterChange={handleAfterChange}
               onChange={handleChange}
-              tipFormatter={value => numberFormatter(value)}
+              tipFormatter={val => numberFormatter(inverseScale(Number(val)))}
               marks={marks}
+              step={stepSize}
             />
           </Wrapper>
         </StyledFormItem>
