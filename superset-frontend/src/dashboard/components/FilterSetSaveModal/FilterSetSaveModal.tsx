@@ -159,8 +159,8 @@ const handleErrorResponse = async (response : SupersetClientResponse | string) =
   const { error, message } = await getClientErrorObject(response);
   let errorText = error || t('An error has occurred');
 
-  if (typeof message === 'object' && message.json_metadata) {
-    errorText = message.json_metadata;
+  if (typeof message === 'object' && message?.json_metadata) {
+    errorText = message?.json_metadata;
   } else if (typeof message === 'string') {
     errorText = message;
 
@@ -183,7 +183,7 @@ import getDashboardUrl from 'src/dashboard/util/getDashboardUrl';
 import { getActiveFilters } from 'src/dashboard/util/activeDashboardFilters';
 import {
   getAllActiveFilters,
-  getRelevantDataMask
+//  getRelevantDataMask
 } from 'src/dashboard/util/activeAllDashboardFilters';
 import { getShortUrl } from 'src/utils/urlUtils';
 
