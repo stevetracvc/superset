@@ -96,7 +96,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     defaultValue ?? [min, max],
   );
   const [marks, setMarks] = useState<{ [key: number]: string }>({});
-  const transformScale = (val : number) => logScale ? Math.log10(val) | 0 : val;
+  const transformScale = (val : number) => logScale ? (val > 0 ? Math.log10(val) : 0) : val;
   const inverseScale = (val : number) => logScale ? Math.pow(10, val) : val;
 
   // value is transformed
