@@ -266,8 +266,7 @@ export default function getControlItemsMap({
                   controlItem.config.value = value;
                   forceUpdate();
                 }}
-                value={controlItem.config.value}
-                initialValue={initialValue}
+                value={controlItem.config.value || initialValue}
                 choices={controlItem.config.choices}
               />
             </StyledRowFormItem>
