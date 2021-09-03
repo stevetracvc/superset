@@ -159,8 +159,8 @@ const handleErrorResponse = async (response : SupersetClientResponse | string) =
   const { error, message } = await getClientErrorObject(response);
   let errorText = error || t('An error has occurred');
 
-  if (typeof message === 'object' && message?.json_metadata) {
-    errorText = message?.json_metadata;
+  if (typeof message === 'object' && message["json_metadata"]) {
+    errorText = message["json_metadata"];
   } else if (typeof message === 'string') {
     errorText = message;
 
@@ -181,10 +181,10 @@ const SAVE_TYPE_NEWFILTER = "newFilter";
 
 import getDashboardUrl from 'src/dashboard/util/getDashboardUrl';
 import { getActiveFilters } from 'src/dashboard/util/activeDashboardFilters';
-import {
-  getAllActiveFilters,
-//  getRelevantDataMask
-} from 'src/dashboard/util/activeAllDashboardFilters';
+// import {
+//   getAllActiveFilters,
+// //  getRelevantDataMask
+// } from 'src/dashboard/util/activeAllDashboardFilters';
 import { getShortUrl } from 'src/utils/urlUtils';
 
 type SaveType = typeof SAVE_TYPE_OVERWRITE | typeof SAVE_TYPE_NEWFILTER;
@@ -336,14 +336,14 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
       return ;
     }
 
-    var all_filters = getAllActiveFilters({
-        chartConfiguration: this.props.dashboardInfo.metadata?.chart_configuration,
-        // dataMask: getRelevantDataMask(this.props.dataMask, 'ownState'),
-        dataMask: this.props.dataMask,
-        layout: this.props.layout,
-        nativeFilters: {},
-    });
-    all_filters = Object.fromEntries(Object.entries(all_filters).map(x => [x[0] + "_bob", x[1]]))
+    // var all_filters = getAllActiveFilters({
+    //     chartConfiguration: this.props.dashboardInfo.metadata?.chart_configuration,
+    //     // dataMask: getRelevantDataMask(this.props.dataMask, 'ownState'),
+    //     dataMask: this.props.dataMask,
+    //     layout: this.props.layout,
+    //     nativeFilters: {},
+    // });
+    // all_filters = Object.fromEntries(Object.entries(all_filters).map(x => [x[0] + "_bob", x[1]]))
 
     const filters = getActiveFilters();
 
@@ -351,7 +351,7 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
       Object.entries({
         ...filters,
         // ...all_filters,
-    }).filter(x => Object.keys(x[1].values).length))
+    }).filter((x : [string, {values: any}]) => Object.keys(x[1].values).length))
 
 
     var url = getDashboardUrl({
