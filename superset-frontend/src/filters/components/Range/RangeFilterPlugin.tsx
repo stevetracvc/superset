@@ -145,8 +145,6 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     // lower & upper are transformed
     const { lower, upper } = getBounds(value);
     setMarks(getMarks(lower, upper));
-    // getRangeExtraFormData emits the filter values
-    // label must not be null for badge to work
     setDataMask({
       extraFormData: getRangeExtraFormData(col, inverseScale(Number(lower)), inverseScale(Number(upper))),
       filterState: {
@@ -179,10 +177,6 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     );
   }
 
-  // let stepSizeUsed = stepSize;
-  // if (stepSize === true || (logScale === true && stepSize >= 1)){
-  //   stepSizeUsed = 0.01;
-  // }
   return (
     <FilterPluginStyle height={height} width={width}>
       {Number.isNaN(Number(min)) || Number.isNaN(Number(max)) ? (
