@@ -245,7 +245,7 @@ export default function getControlItemsMap({
               key={controlItem.name}
               name={['filters', filterId, 'controlValues', controlItem.name]}
               initialValue={initialValue}
-              valuePropName="selectedValue"
+              valuePropName="option"
               colon={false}
               label={
                 <StyledLabel>
