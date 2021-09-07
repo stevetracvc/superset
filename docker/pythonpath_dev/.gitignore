@@ -16,7 +16,8 @@
 #
 
 # Ignore everything
-*
+__pycache__
+superset_config_oauth.py
 # DON'T ignore the .gitignore
 !.gitignore
 !superset_config.py
