@@ -96,8 +96,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     defaultValue ?? [min, max],
   );
   const [marks, setMarks] = useState<{ [key: number]: string }>({});
-  const transformScale = (val : number) => logScale ? (val > 0 ? Math.log10(val) : 0) : val;
-  const inverseScale = (val : number) => logScale ? Math.pow(10, val) : val;
+  const transformScale = (val : number | null) => logScale && val ? (val > 0 ? Math.log10(val) : 0) : val;
+  const inverseScale = (val : number | null) => logScale && val ? Math.pow(10, val) : val;
 
   // value is transformed
   const getBounds = (
@@ -105,8 +105,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   ): { lower: number | null; upper: number | null } => {
     const [lowerRaw, upperRaw] = value;
     return {
-      lower: lowerRaw > transformScale(min) ? lowerRaw : null,
-      upper: upperRaw < transformScale(max) ? upperRaw : null,
+      lower: lowerRaw > Number(transformScale(min)) ? lowerRaw : null,
+      upper: upperRaw < Number(transformScale(max)) ? upperRaw : null,
     };
   };
 
@@ -145,11 +145,12 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     // lower & upper are transformed
     const { lower, upper } = getBounds(value);
     setMarks(getMarks(lower, upper));
+    // removed Number
     setDataMask({
-      extraFormData: getRangeExtraFormData(col, inverseScale(Number(lower)), inverseScale(Number(upper))),
+      extraFormData: getRangeExtraFormData(col, inverseScale(lower), inverseScale(upper)),
       filterState: {
         value: lower !== null || upper !== null ? value : null,
-        label: getLabel(inverseScale(Number(lower)), inverseScale(Number(upper))),
+        label: getLabel(inverseScale(lower), inverseScale(upper)),
       },
     });
   };
@@ -195,7 +196,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
             <Slider
               range
               min={transformScale(min) ?? 0}
-              max={transformScale(max)}
+              max={transformScale(max) ?? undefined}
               value={value ?? [transformScale(min) ?? 0, transformScale(max)]}
               onAfterChange={handleAfterChange}
               onChange={handleChange}
