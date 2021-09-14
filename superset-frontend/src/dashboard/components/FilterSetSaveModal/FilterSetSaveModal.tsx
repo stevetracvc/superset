@@ -561,6 +561,7 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
                     name="filterSetTitles"
                     ariaLabel={t('Existing Filter Sets')}
                     options={options}
+                    value={this.state.filterSetTitle}
                     onChange={e => this.onSelectChange(e)}
                   />
                 </StyledRowFormItem>
