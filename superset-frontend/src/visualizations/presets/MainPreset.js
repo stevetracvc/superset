@@ -21,8 +21,8 @@ import {
   BigNumberChartPlugin,
   BigNumberTotalChartPlugin,
 } from '@superset-ui/legacy-preset-chart-big-number';
-import MarkupDataChartPlugin from '@superset-ui/legacy-plugin-chart-markup-data';
-import TableWriteChartPlugin from '@superset-ui/plugin-chart-table-write';
+//import MarkupDataChartPlugin from '@superset-ui/legacy-plugin-chart-markup-data';
+import TableInsertChartPlugin from '@superset-ui/plugin-chart-trac-table-insert';
 import CalendarChartPlugin from '@superset-ui/legacy-plugin-chart-calendar';
 import ChordChartPlugin from '@superset-ui/legacy-plugin-chart-chord';
 import CountryMapChartPlugin from '@superset-ui/legacy-plugin-chart-country-map';
@@ -97,8 +97,8 @@ export default class MainPreset extends Preset {
       name: 'Legacy charts',
       presets: [new DeckGLChartPreset()],
       plugins: [
-        new MarkupDataChartPlugin().configure({ key: 'markup' }),
-        new TableWriteChartPlugin().configure({ key: 'table_write' }),
+//        new MarkupDataChartPlugin().configure({ key: 'markup' }),
+        new TableInsertChartPlugin().configure({ key: 'table_insert' }),
         new AreaChartPlugin().configure({ key: 'area' }),
         new BarChartPlugin().configure({ key: 'bar' }),
         new BigNumberChartPlugin().configure({ key: 'big_number' }),
