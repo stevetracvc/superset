@@ -92,7 +92,7 @@ from superset.exceptions import (
 )
 from superset.extensions import async_query_manager, cache_manager
 from superset.jinja_context import get_template_processor
-from superset.models.core import Database, FavStar, Log, FilterSet
+from superset.models.core import Database, FavStar, Log, FilterSetTRAC
 from superset.models.dashboard import Dashboard
 from superset.models.datasource_access_request import DatasourceAccessRequest
 from superset.models.slice import Slice
@@ -3145,10 +3145,10 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
         # Load all for this user and dashboard
         if request.method == "GET":
             filter_sets = (
-                session.query(FilterSet)
+                session.query(FilterSetTRAC)
                     .filter_by(dashboard_id=dashboard_id,
                         user_id=g.user.get_id(), deleted=None)
-                    .order_by(FilterSet.title)
+                    .order_by(FilterSetTRAC.title)
                     .all()
             )
             logger.info(f"XXXXXXXXXX records returned: {filter_sets}")
@@ -3157,7 +3157,7 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
         elif request.method == "PUT":
             data = request.get_json(force=True)
             logger.info(f"XXXXXXXXXX deleting filter set id: {data['fs_id']}")
-            (session.query(FilterSet)
+            (session.query(FilterSetTRAC)
                 .filter_by(id=data['fs_id'])
                 .update({"deleted": datetime.now()}))
             session.commit()
@@ -3167,7 +3167,7 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
             data = request.get_json(force=True)
             logger.info(f"request get_json: {data}")
             session.add(
-                FilterSet(
+                FilterSetTRAC(
                     dashboard_id=dashboard_id,
                     user_id=g.user.get_id(),
                     dttm=datetime.now(),

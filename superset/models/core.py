@@ -766,10 +766,10 @@ class FavStar(Model):  # pylint: disable=too-few-public-methods
     dttm = Column(DateTime, default=datetime.utcnow)
 
 
-class FilterSet(Model):
+class FilterSetTRAC(Model):
 
     """The filter set object!"""
-    __tablename__ = "filter_set"
+    __tablename__ = "filter_set_trac"
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("ab_user.id"))
@@ -783,7 +783,7 @@ class FilterSet(Model):
     deleted = Column(DateTime, default=None)
 
     def __repr__(self) -> str:
-        return f"FilterSet<{self.id}>"
+        return f"FilterSetTRAC<{self.id}>"
 
     @property
     def sqla_metadata(self) -> None:
