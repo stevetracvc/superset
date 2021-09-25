@@ -40,7 +40,7 @@ import Modal from 'src/components/Modal';
 import ModalTrigger from 'src/components/ModalTrigger';
 
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
-import withToasts from 'src/messageToasts/enhancers/withToasts';
+import withToasts from 'src/components/MessageToasts/withToasts';
 // import { FeatureFlag, isFeatureEnabled } from 'src/featureFlags';
 const { TabPane } = Tabs;
 import { DataMaskStateWithId } from 'src/dataMask/types';
