@@ -17,3 +17,9 @@
 -r base.in
 gevent
 psycopg2-binary
+mysqlclient
+pymysql
+#flask_oauthlib
+Authlib
+requests
+

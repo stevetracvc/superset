@@ -100,16 +100,6 @@ WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL
 SQLLAB_CTAS_NO_LIMIT = True
 
 
-
-FEATURE_FLAGS = {
-    "DASHBOARD_NATIVE_FILTERS": True,
-    "DASHBOARD_CROSS_FILTERS": True,
-    "DASHBOARD_NATIVE_FILTERS_SET": True,
-    "DASHBOARD_FILTERS_EXPERIMENTAL": True,
-    "ENABLE_EXPLORE_DRAG_AND_DROP": False,
-    "ENABLE_TEMPLATE_PROCESSING": True,
-}
-
 #
 # Optionally import superset_config_docker.py (which will have been included on
 # the PYTHONPATH) in order to allow for local settings to be overridden

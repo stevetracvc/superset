@@ -18,9 +18,13 @@
 set -e
 
 cd /app/superset-frontend
+echo "starting npm stuff"
 npm install -g npm@7
+echo "installing webpack"
 npm install -f --no-optional --global webpack webpack-cli
-npm install -f --no-optional
+echo "installing everything else"
+# npm install -f --no-optional
+# npm install --no-optional
 
 echo "Running frontend"
 npm run dev
