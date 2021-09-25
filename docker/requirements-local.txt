@@ -1,0 +1,6 @@
+mysqlclient
+pymysql
+#flask_oauthlib
+Authlib
+requests
+
