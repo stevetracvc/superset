@@ -924,6 +924,7 @@ class ChartDataDatasourceSchema(Schema):
         description="Datasource type",
         validate=validate.OneOf(choices=("druid", "table")),
     )
+    slice_id = fields.Integer(description="Slice id", required=False,)
 
 
 class ChartDataQueryObjectSchema(Schema):

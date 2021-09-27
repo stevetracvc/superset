@@ -513,7 +513,13 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
             # return the first result
             data = result["queries"][0]["data"]
-            return CsvResponse(data, headers=generate_download_headers("csv"))
+            # Load slice_name for a more useful CSV filename
+            slice_id = form_data["slice_id"]
+            from superset import db
+            slices = db.session.query(Slice).filter_by(id=slice_id).all()
+            slice_name = slices[0]
+            now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            return CsvResponse(data, headers=generate_download_headers("csv", f"{slice_name}_{now_str}"))
 
         if result_format == ChartDataResultFormat.JSON:
             response_data = simplejson.dumps(
@@ -540,6 +546,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except ChartDataQueryFailedError as exc:
             return self.response_400(message=exc.message)
 
+        logger.warn(f"XXXXXXXXXXXXXXXXXXXXXXXX: {form_data}")
         return self.send_chart_response(result, form_data)
 
     @expose("/<int:pk>/data/", methods=["GET"])
@@ -690,12 +697,19 @@ class ChartRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/500'
         """
         json_body = None
+        form_data = None
         if request.is_json:
             json_body = request.json
         elif request.form.get("form_data"):
             # CSV export submits regular form data
             try:
                 json_body = json.loads(request.form["form_data"])
+                form_data = {"slice_id": json_body["datasource"]["slice_id"]}
+#                logger.error(f"XXXXXXXXXX: {form_data}")
+#                logger.error(f"XXXXXXXXXX: {dir(request)}")
+#                import pickle
+#                with open("sqla.pkl", "wb") as file:
+#                    pickle.dump(self, file)
             except (TypeError, json.JSONDecodeError):
                 pass
 
@@ -723,7 +737,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         ):
             return self._run_async(command)
 
-        return self.get_data_response(command)
+        return self.get_data_response(command, form_data=form_data)
 
     def _run_async(self, command: ChartDataCommand) -> Response:
         """

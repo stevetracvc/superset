@@ -303,6 +303,7 @@ export const exportChart = ({
       ownState,
     });
   }
+  payload.datasource.slice_id = formData.slice_id;
   postForm(url, payload);
 };
 
