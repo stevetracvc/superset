@@ -23,8 +23,8 @@ npm install -g npm@7
 echo "installing webpack"
 npm install -f --no-optional --global webpack webpack-cli
 echo "installing everything else"
-# npm install -f --no-optional
-# npm install --no-optional
+npm install -f --no-optional
+npm install --no-optional
 
 echo "Running frontend"
 npm run dev
