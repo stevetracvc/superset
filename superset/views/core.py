@@ -89,6 +89,7 @@ from superset.exceptions import (
 from superset.extensions import async_query_manager, cache_manager
 from superset.jinja_context import get_template_processor
 from superset.models.core import Database, FavStar, Log, FilterSetTRAC
+from superset.models.dashboard import metadata
 from superset.models.dashboard import Dashboard
 from superset.models.datasource_access_request import DatasourceAccessRequest
 from superset.models.slice import Slice
@@ -140,6 +141,8 @@ from superset.views.utils import (
     is_owner,
 )
 from superset.viz import BaseViz
+from sqlalchemy.schema import Table as sqlTable
+from sqlalchemy import update
 
 config = app.config
 SQLLAB_QUERY_COST_ESTIMATE_TIMEOUT = config["SQLLAB_QUERY_COST_ESTIMATE_TIMEOUT"]
@@ -2874,3 +2877,69 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
             return json_success(json.dumps({"inserted": True}))
 
         return json_success(json.dumps({"action": "nothing"}))
+
+    # @has_access_api
+    @handle_api_exception
+    @event_logger.log_this
+    @expose("/trac/update/<int:database_id>/",
+            methods=["POST"])
+    def trac_update(  # pylint: disable=no-self-use
+        self, database_id: int
+    ) -> FlaskResponse:
+        # if not g.user.get_id():
+        #     return json_error_response("ERROR: Filter Set access denied", status=403)
+        # session = db.session()
+        if request.method == "POST":
+            log_params = {
+                "user_agent": cast(Optional[str], request.headers.get("USER_AGENT"))
+            }
+            data = request.get_json(force=True)
+            primary_key_column = data["primary_key_column"]
+            primary_key_id = data["primary_key_id"]
+            table_name = data["table_name"]
+            all_values = data["all_values"]
+            logger.info(f"---------------: {data}")
+            logger.info(f"---------------: {all_values}")
+            # newTable = sqlTable(data.tableName, )
+#             sql = f"""
+# UPDATE {data["table_name"]}
+# SET {",".join([f'{x} = {data["all_values"][x]}' for x in data["all_values"]])}
+# WHERE {data["primary_key_column"]} = {data["primary_key_id"]}
+# """
+#             logger.info(f"new query: {sql}")
+#             data["sql"] = sql
+            # dataJson = json.dumps(data)
+            execution_context = SqlJsonExecutionContext(data)
+            command = ExecuteSqlCommand(execution_context, log_params)
+            # command_result: CommandResult = command.run()
+            thisDb = command._get_the_query_db()
+            execution_context.set_database(thisDb)
+            # logger.info(metadata.tables)
+            # if data["table_name"] not in metadata.tables:
+
+            newTable = sqlTable(table_name, metadata,
+                    autoload_with=thisDb.get_sqla_engine())
+
+            # (newTable.update()
+            #     .where(getattr(newTable.columns,
+            #                     primary_key_column) == primary_key_id)
+            #     .values(all_values))
+            # command.session.commit()
+            stmt = (
+                update(newTable).
+                where(getattr(newTable.columns,
+                                primary_key_column) == primary_key_id).
+                values(all_values)
+            )
+            compiled_stmt = thisDb.compile_sqla_query(stmt)
+            logger.error(f"XXXXXXXXXXXXX: {compiled_stmt}")
+
+            command.execution_context.sql = compiled_stmt
+            command.execution_context.set_query(
+                command.execution_context.create_query()
+            )
+            command_result: CommandResult = command.run()
+
+            return json_success(json.dumps({"updated": True}))
+
+        return json_error_response("Error")
