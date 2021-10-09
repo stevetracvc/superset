@@ -2903,8 +2903,10 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
 #             logger.info(f"new query: {sql}")
 #             data["sql"] = sql
             # dataJson = json.dumps(data)
-            execution_context = SqlJsonExecutionContext(data)
-            command = ExecuteSqlCommand(execution_context, log_params)
+            # execution_context = SqlJsonExecutionContext(data)
+            # command = ExecuteSqlCommand(execution_context, log_params)
+            execution_context = SqlJsonExecutionContext(request.json)
+            command = self._create_sql_json_command(execution_context, log_params)
             # command_result: CommandResult = command.run()
             thisDb = command._get_the_query_db()
             execution_context.set_database(thisDb)
@@ -2928,9 +2930,9 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
             compiled_stmt = thisDb.compile_sqla_query(stmt)
             logger.error(f"XXXXXXXXXXXXX: {compiled_stmt}")
 
-            command.execution_context.sql = compiled_stmt
-            command.execution_context.set_query(
-                command.execution_context.create_query()
+            command._execution_context.sql = compiled_stmt
+            command._execution_context.set_query(
+                command._execution_context.create_query()
             )
             command_result: CommandResult = command.run()
 
