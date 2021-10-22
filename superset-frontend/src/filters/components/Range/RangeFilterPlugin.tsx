@@ -22,10 +22,9 @@ import {
   styled,
   t,
 } from '@superset-ui/core';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Slider } from 'src/common/components';
 import { rgba } from 'emotion-rgba';
-import { FormItemProps } from 'antd/lib/form';
 import { PluginFilterRangeProps } from './types';
 import { StatusMessage, StyledFormItem, FilterPluginStyle } from '../common';
 import { getRangeExtraFormData } from '../../utils';
@@ -74,6 +73,37 @@ const Wrapper = styled.div<{ validateStatus?: 'error' | 'warning' | 'info' }>`
   `}
 `;
 
+const numberFormatter = getNumberFormatter(NumberFormats.SMART_NUMBER);
+
+const tipFormatter = (value: number) => numberFormatter(value);
+
+const getLabel = (lower: number | null, upper: number | null): string => {
+  if (lower !== null && upper !== null) {
+    return `${numberFormatter(lower)} ≤ x ≤ ${numberFormatter(upper)}`;
+  }
+  if (lower !== null) {
+    return `x ≥ ${numberFormatter(lower)}`;
+  }
+  if (upper !== null) {
+    return `x ≤ ${numberFormatter(upper)}`;
+  }
+  return '';
+};
+
+const getMarks = (
+  lower: number | null,
+  upper: number | null,
+): { [key: number]: string } => {
+  const newMarks: { [key: number]: string } = {};
+  if (lower !== null) {
+    newMarks[lower] = numberFormatter(lower);
+  }
+  if (upper !== null) {
+    newMarks[upper] = numberFormatter(upper);
+  }
+  return newMarks;
+};
+
 export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   const {
     data,
@@ -85,8 +115,6 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     unsetFocusedFilter,
     filterState,
   } = props;
-  const numberFormatter = getNumberFormatter(NumberFormats.SMART_NUMBER);
-
   const [row] = data;
   // @ts-ignore
   const { min, max }: { min: number; max: number } = row;
@@ -102,15 +130,18 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     logScale && val ? Math.pow(10, val) : val;
 
   // value is transformed
-  const getBounds = (
-    value: [number, number],
-  ): { lower: number | null; upper: number | null } => {
-    const [lowerRaw, upperRaw] = value;
-    return {
-      lower: lowerRaw > Number(transformScale(min)) ? lowerRaw : null,
-      upper: upperRaw < Number(transformScale(max)) ? upperRaw : null,
-    };
-  };
+  const getBounds = useCallback(
+    (
+      value: [number, number],
+    ): { lower: number | null; upper: number | null } => {
+      const [lowerRaw, upperRaw] = value;
+      return {
+        lower: lowerRaw > Number(transformScale(min)) ? lowerRaw : null,
+        upper: upperRaw < Number(transformScale(max)) ? upperRaw : null,
+      };
+    },
+    [max, min],
+);
 
   // lower and upper are NOT transformed!!!!
   const getLabel = (lower: number | null, upper: number | null): string => {
@@ -141,30 +172,33 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     return newMarks;
   };
 
-  const handleAfterChange = (value: [number, number]): void => {
-    // value is transformed
-    setValue(value);
-    // lower & upper are transformed
-    const { lower, upper } = getBounds(value);
-    setMarks(getMarks(lower, upper));
-    // removed Number
-    setDataMask({
-      extraFormData: getRangeExtraFormData(
-        col,
-        inverseScale(lower),
-        inverseScale(upper),
-      ),
-      filterState: {
-        value: lower !== null || upper !== null ? value : null,
-        label: getLabel(inverseScale(lower), inverseScale(upper)),
-      },
-    });
-  };
+  const handleAfterChange = useCallback(
+    (value: [number, number]): void => {
+      // value is transformed
+      setValue(value);
+      // lower & upper are transformed
+      const { lower, upper } = getBounds(value);
+      setMarks(getMarks(lower, upper));
+      // removed Number
+      setDataMask({
+        extraFormData: getRangeExtraFormData(
+          col,
+          inverseScale(lower),
+          inverseScale(upper),
+        ),
+        filterState: {
+          value: lower !== null || upper !== null ? value : null,
+          label: getLabel(inverseScale(lower), inverseScale(upper)),
+        },
+      });
+    },
+    [col, getBounds, setDataMask],
+  );
 
-  const handleChange = (value: [number, number]) => {
     // value is transformed
+  const handleChange = useCallback((value: [number, number]) => {
     setValue(value);
-  };
+  }, []);
 
   // value is transformed
   useEffect(() => {
@@ -175,21 +209,25 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     handleAfterChange(filterState.value ?? [min, max]);
   }, [JSON.stringify(filterState.value), JSON.stringify(data)]);
 
-  const formItemData: FormItemProps = {};
-  if (filterState.validateMessage) {
-    formItemData.extra = (
-      <StatusMessage status={filterState.validateStatus}>
-        {filterState.validateMessage}
-      </StatusMessage>
-    );
-  }
+  const formItemExtra = useMemo(() => {
+    if (filterState.validateMessage) {
+      return (
+        <StatusMessage status={filterState.validateStatus}>
+          {filterState.validateMessage}
+        </StatusMessage>
+      );
+    }
+    return undefined;
+  }, [filterState.validateMessage, filterState.validateStatus]);
+
+  const minMax = useMemo(() => value ?? [transformScale(min) ?? 0, transformScale(max)], [max, min, value]);
 
   return (
     <FilterPluginStyle height={height} width={width}>
       {Number.isNaN(Number(min)) || Number.isNaN(Number(max)) ? (
         <h4>{t('Chosen non-numeric column')}</h4>
       ) : (
-        <StyledFormItem {...formItemData}>
+        <StyledFormItem extra={formItemExtra}>
           <Wrapper
             tabIndex={-1}
             ref={inputRef}
@@ -203,7 +241,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
               range
               min={transformScale(min) ?? 0}
               max={transformScale(max) ?? undefined}
-              value={value ?? [transformScale(min) ?? 0, transformScale(max)]}
+              value={minMax}
               onAfterChange={handleAfterChange}
               onChange={handleChange}
               tipFormatter={val => numberFormatter(inverseScale(Number(val)))}

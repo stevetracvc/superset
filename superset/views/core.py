@@ -865,6 +865,9 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
         except (SupersetException, SQLAlchemyError):
             datasource_data = dummy_datasource_data
 
+        if datasource:
+            datasource_data["owners"] = datasource.owners_data
+
         bootstrap_data = {
             "can_add": slice_add_perm,
             "can_download": slice_download_perm,
@@ -927,7 +930,9 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
         datasource.raise_for_access()
         row_limit = apply_max_row_limit(config["FILTER_SELECT_ROW_LIMIT"])
         payload = json.dumps(
-            datasource.values_for_column(column, row_limit),
+            datasource.values_for_column(
+                column_name=column, limit=row_limit, contain_null=False,
+            ),
             default=utils.json_int_dttm_ser,
             ignore_nan=True,
         )

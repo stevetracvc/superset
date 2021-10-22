@@ -99,10 +99,12 @@ class ExtraCache:
     def __init__(
         self,
         extra_cache_keys: Optional[List[Any]] = None,
+        applied_filters: Optional[List[str]] = None,
         removed_filters: Optional[List[str]] = None,
         dialect: Optional[Dialect] = None,
     ):
         self.extra_cache_keys = extra_cache_keys
+        self.applied_filters = applied_filters if applied_filters is not None else []
         self.removed_filters = removed_filters if removed_filters is not None else []
         self.dialect = dialect
 
@@ -333,6 +335,9 @@ class ExtraCache:
                 if remove_filter:
                     if column not in self.removed_filters:
                         self.removed_filters.append(column)
+                if column not in self.applied_filters:
+                    self.applied_filters.append(column)
+
                 if op in (
                     FilterOperator.IN.value,
                     FilterOperator.NOT_IN.value,
@@ -418,6 +423,7 @@ class BaseTemplateProcessor:
         table: Optional["SqlaTable"] = None,
         extra_cache_keys: Optional[List[Any]] = None,
         removed_filters: Optional[List[str]] = None,
+        applied_filters: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> None:
         self._database = database
@@ -428,6 +434,7 @@ class BaseTemplateProcessor:
         elif table:
             self._schema = table.schema
         self._extra_cache_keys = extra_cache_keys
+        self._applied_filters = applied_filters
         self._removed_filters = removed_filters
         self._context: Dict[str, Any] = {}
         self._env = SandboxedEnvironment(undefined=DebugUndefined)
@@ -456,6 +463,7 @@ class JinjaTemplateProcessor(BaseTemplateProcessor):
         super().set_context(**kwargs)
         extra_cache = ExtraCache(
             extra_cache_keys=self._extra_cache_keys,
+            applied_filters=self._applied_filters,
             removed_filters=self._removed_filters,
             dialect=self._database.get_dialect(),
         )
