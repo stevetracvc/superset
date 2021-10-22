@@ -26,6 +26,7 @@ import { FormInstance } from 'antd/lib/form';
 import { getChartControlPanelRegistry, styled, t } from '@superset-ui/core';
 import { Tooltip } from 'src/components/Tooltip';
 import { FormItem } from 'src/components/Form';
+import SelectControl from 'src/explore/components/controls/SelectControl';
 import {
   doesColumnMatchFilterType,
   getControlItems,
@@ -39,7 +40,6 @@ import {
 } from './FiltersConfigForm';
 import { Filter } from '../../types';
 import { ColumnSelect } from './ColumnSelect';
-import SelectControl from 'src/explore/components/controls/SelectControl';
 
 export interface ControlItemsProps {
   datasetId: number;
@@ -258,7 +258,7 @@ export default function getControlItemsMap({
                 clearable={false}
                 freeForm={controlItem.config.freeForm}
                 disabled={controlItem.config.affectsDataMask && disabled}
-                onChange={(value : any) => {
+                onChange={(value: any) => {
                   setNativeFilterFieldValues(form, filterId, {
                     [controlItem.name]: value,
                     defaultDataMask: null,
