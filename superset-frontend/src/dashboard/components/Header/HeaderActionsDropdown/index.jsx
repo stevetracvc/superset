@@ -30,8 +30,9 @@ import RefreshIntervalModal from 'src/dashboard/components/RefreshIntervalModal'
 import SaveModal from 'src/dashboard/components/SaveModal';
 
 // import SaveFiltersModal from 'src/dashboard/components/FilterSetSaveModal/SaveFiltersModal';
-import FilterSetSaveModal,
-  { SAVE_TYPE_NEWFILTER } from 'src/dashboard/components/FilterSetSaveModal/FilterSetSaveModal';
+import FilterSetSaveModal, {
+  SAVE_TYPE_NEWFILTER,
+} from 'src/dashboard/components/FilterSetSaveModal/FilterSetSaveModal';
 import injectCustomCss from 'src/dashboard/util/injectCustomCss';
 import { SAVE_TYPE_NEWDASHBOARD } from 'src/dashboard/util/constants';
 import FilterScopeModal from 'src/dashboard/components/filterscope/FilterScopeModal';
@@ -339,7 +340,9 @@ class HeaderActionsDropdown extends React.PureComponent {
               saveType={SAVE_TYPE_NEWFILTER}
               layout={layout}
               triggerNode={
-                <span data-test="save-filters-menu-item">{t('Save/Load Filter Sets')}</span>
+                <span data-test="save-filters-menu-item">
+                  {t('Save/Load Filter Sets')}
+                </span>
               }
             />
           </Menu.Item>

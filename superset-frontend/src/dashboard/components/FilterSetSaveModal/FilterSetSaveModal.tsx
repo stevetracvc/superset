@@ -176,8 +176,8 @@ const handleErrorResponse = async (response : SupersetClientResponse | string) =
   });
 };
 
-const SAVE_TYPE_OVERWRITE = "overwriteFilter";
-const SAVE_TYPE_NEWFILTER = "newFilter";
+export const SAVE_TYPE_OVERWRITE = "overwriteFilter";
+export const SAVE_TYPE_NEWFILTER = "newFilter";
 
 import getDashboardUrl from 'src/dashboard/util/getDashboardUrl';
 import { getActiveFilters } from 'src/dashboard/util/activeDashboardFilters';
