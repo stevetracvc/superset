@@ -73,7 +73,7 @@ export function CustomFrame(props: FrameComponentProps) {
     value: string | number,
   ) {
     // only positive values in grainValue controls
-    if (isInteger(value) && value > 0) {
+    if (isInteger(value)) {
       props.onChange(
         customTimeRangeEncode({
           ...customRange,
@@ -192,7 +192,6 @@ export function CustomFrame(props: FrameComponentProps) {
                 <InputNumber
                   placeholder={t('Relative quantity')}
                   value={untilGrainValue}
-                  min={1}
                   defaultValue={1}
                   onChange={value =>
                     onGrainValue('untilGrainValue', value || 1)
