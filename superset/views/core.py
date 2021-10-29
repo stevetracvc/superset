@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import re
 from contextlib import closing
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Any, Callable, cast, Dict, List, Optional, Union
 from urllib import parse
 
@@ -158,7 +158,7 @@ from superset.views.utils import (
 )
 from superset.viz import BaseViz
 from sqlalchemy.schema import Table as sqlTable
-from sqlalchemy import update
+from sqlalchemy import update, select
 
 config = app.config
 SQLLAB_QUERY_COST_ESTIMATE_TIMEOUT = config["SQLLAB_QUERY_COST_ESTIMATE_TIMEOUT"]
@@ -3008,6 +3008,13 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
                                 primary_key_column) == primary_key_id).
                 values(all_values)
             )
+            logger.error(f"XXXXXXXXXXXXX: {stmt}")
+
+            # session = thisDb.session()
+            # session.execute(stmt)
+            # session.commit()
+            # return json_success(json.dumps({"updated": True}))
+
             compiled_stmt = thisDb.compile_sqla_query(stmt)
             logger.error(f"XXXXXXXXXXXXX: {compiled_stmt}")
 
@@ -3018,5 +3025,108 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
             command_result: CommandResult = command.run()
 
             return json_success(json.dumps({"updated": True}))
+
+        return json_error_response("Error")
+
+
+    @handle_api_exception
+    @event_logger.log_this
+    @expose("/trac/upload", #/<int:database_id>/<table_name>/<column>/<primary_key_id>",
+            methods=["POST", "GET", "DELETE"])
+    def trac_upload(  # pylint: disable=no-self-use
+        self, # database_id: int, table_name: str, primary_key_id: str, column: str,
+    ) -> FlaskResponse:
+        # data = request.get_json(force=True)
+        log_params = {
+            "user_agent": cast(Optional[str], request.headers.get("USER_AGENT"))
+        }
+        if request.method == "POST" or request.method == "DELETE":
+            file_data = request.get_data()
+            column_name_meta = request.headers.get('columnNameMeta')
+            column_name_data = request.headers.get('columnNameData')
+
+            if (file_data or request.method == "DELETE") and column_name_meta and column_name_data:
+                table_name = request.headers.get('tableName')
+                primary_key_id = request.headers.get('primaryKeyID')
+                primary_key_column = request.headers.get('primaryKeyColumn')
+                file_name = request.headers.get('fileName')
+                file_type = request.headers.get('fileType')
+                file_modified_date = request.headers.get('fileModifiedDate')
+                v = {
+                    "client_id": request.headers.get('id'),
+                    "database_id": request.headers.get('dbId'),
+                    "schema": request.headers.get('schema'),
+                }
+                # empty meta payload for delete?
+                payload = None
+                if request.method == "POST":
+                    payload = json.dumps({
+                        "name": file_name,
+                        "type": file_type,
+                        "date": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                        "modified": file_modified_date,
+                    })
+                execution_context = SqlJsonExecutionContext(v)
+                command = self._create_sql_json_command(execution_context, log_params)
+                thisDb = command._get_the_query_db()
+                execution_context.set_database(thisDb)
+                newTable = sqlTable(table_name, metadata,
+                        autoload_with=thisDb.get_sqla_engine())
+
+                # use get instead, to help insulate SQL from user input?
+                column_name_meta = newTable.columns.get(column_name_meta, {"name": None})
+                column_name_meta = column_name_meta.name
+                column_name_data = newTable.columns.get(column_name_data, {"name": None})
+                column_name_data = column_name_data.name
+
+                stmt = (
+                    update(newTable).
+                    where(getattr(newTable.columns,
+                        primary_key_column) == primary_key_id).
+                    values(**{
+                        f"{column_name_meta}": payload,
+                        f"{column_name_data}": file_data,
+                    })
+                )
+                thisDb.get_sqla_engine().execute(stmt)
+
+
+                return json_success(json.dumps({"updated": True}))
+
+            return json_error_response("No file supplied?")
+        elif request.method == "GET":
+            # get file from DB and return it somehow....?
+            column_name_data = request.headers.get('columnNameData')
+            table_name = request.headers.get('tableName')
+            primary_key_id = request.headers.get('primaryKeyID')
+            primary_key_column = request.headers.get('primaryKeyColumn')
+            file_name = request.headers.get('fileName')
+            file_type = request.headers.get('fileType')
+            file_modified_date = request.headers.get('fileModifiedDate')
+            v = {
+                "client_id": request.headers.get('id'),
+                "database_id": request.headers.get('dbId'),
+                "schema": request.headers.get('schema'),
+            }
+
+            execution_context = SqlJsonExecutionContext(v)
+            command = self._create_sql_json_command(execution_context, log_params)
+            thisDb = command._get_the_query_db()
+            execution_context.set_database(thisDb)
+            newTable = sqlTable(table_name, metadata,
+                    autoload_with=thisDb.get_sqla_engine())
+
+            # use get instead, to help insulate SQL from user input?
+            column_name_data = newTable.columns.get(column_name_data, {"name": None})
+
+            stmt = (
+                select([column_name_data]).
+                where(getattr(newTable.columns, primary_key_column) == primary_key_id)
+            )
+            result = thisDb.get_sqla_engine().execute(stmt)
+            # logger.info(f"{result.fetchone()}")
+            # return json_error_response("No file supplied?")
+            # logger.error(result.fetchone()[0])
+            return result.fetchone()[0]
 
         return json_error_response("Error")
