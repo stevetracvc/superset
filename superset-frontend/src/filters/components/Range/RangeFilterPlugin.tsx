@@ -100,7 +100,6 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     unsetFocusedFilter,
     filterState,
   } = props;
-
   const [row] = data;
   // @ts-ignore
   const { min, max }: { min: number; max: number } = row;
@@ -181,7 +180,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   // value is transformed
   const handleChange = useCallback((value: [number, number]) => {
     setValue(value);
-  };
+  }, []);
 
   // value is transformed
   useEffect(() => {
@@ -213,7 +212,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
       {Number.isNaN(Number(min)) || Number.isNaN(Number(max)) ? (
         <h4>{t('Chosen non-numeric column')}</h4>
       ) : (
-        <StyledFormItem {...formItemData}>
+        <StyledFormItem extra={formItemExtra}>
           <Wrapper
             tabIndex={-1}
             ref={inputRef}
@@ -227,7 +226,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
               range
               min={transformScale(min) ?? 0}
               max={transformScale(max) ?? undefined}
-              value={value ?? [transformScale(min) ?? 0, transformScale(max)]}
+              value={minMax}
               onAfterChange={handleAfterChange}
               onChange={handleChange}
               tipFormatter={tipFormatter}

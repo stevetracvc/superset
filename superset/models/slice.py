@@ -40,6 +40,7 @@ from superset.utils.urls import get_url_path
 from superset.viz import BaseViz, viz_types
 
 if TYPE_CHECKING:
+    from superset.common.query_context import QueryContext
     from superset.connectors.base.models import BaseDatasource
 
 metadata = Model.metadata  # pylint: disable=no-member
@@ -53,7 +54,7 @@ slice_user = Table(
 logger = logging.getLogger(__name__)
 
 
-class Slice(  # pylint: disable=too-many-public-methods, too-many-instance-attributes
+class Slice(  # pylint: disable=too-many-public-methods
     Model, AuditMixinNullable, ImportExportMixin
 ):
     """A slice is essentially a report or a view on data"""
@@ -74,7 +75,7 @@ class Slice(  # pylint: disable=too-many-public-methods, too-many-instance-attri
     # the last time a user has saved the chart, changed_on is referencing
     # when the database row was last written
     last_saved_at = Column(DateTime, nullable=True)
-    last_saved_by_fk = Column(Integer, ForeignKey("ab_user.id"), nullable=True,)
+    last_saved_by_fk = Column(Integer, ForeignKey("ab_user.id"), nullable=True)
     last_saved_by = relationship(
         security_manager.user_model, foreign_keys=[last_saved_by_fk]
     )
@@ -246,6 +247,18 @@ class Slice(  # pylint: disable=too-many-public-methods, too-many-instance-attri
             form_data["cache_timeout"] = self.cache_timeout
         update_time_range(form_data)
         return form_data
+
+    def get_query_context(self) -> Optional["QueryContext"]:
+        # pylint: disable=import-outside-toplevel
+        from superset.common.query_context import QueryContext
+
+        if self.query_context:
+            try:
+                return QueryContext(**json.loads(self.query_context))
+            except json.decoder.JSONDecodeError as ex:
+                logger.error("Malformed json in slice's query context", exc_info=True)
+                logger.exception(ex)
+        return None
 
     def get_explore_url(
         self,

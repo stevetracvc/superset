@@ -14,6 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+# pylint: disable=too-many-lines
 from typing import Any, Dict
 
 from flask_babel import gettext as _
@@ -22,13 +23,12 @@ from marshmallow.validate import Length, Range
 from marshmallow_enum import EnumField
 
 from superset import app
+from superset.common.chart_data import ChartDataResultFormat, ChartDataResultType
 from superset.common.query_context import QueryContext
 from superset.db_engine_specs.base import builtin_time_grains
 from superset.utils import schema as utils
 from superset.utils.core import (
     AnnotationType,
-    ChartDataResultFormat,
-    ChartDataResultType,
     FilterOperator,
     PostProcessingBoxplotWhiskerType,
     PostProcessingContributionOrientation,
@@ -638,18 +638,15 @@ class ChartDataPivotOptionsSchema(ChartDataPostProcessingOperationOptionsSchema)
 
     index = (
         fields.List(
-            fields.String(
-                allow_none=False,
-                description="Columns to group by on the table index (=rows)",
-            ),
+            fields.String(allow_none=False),
+            description="Columns to group by on the table index (=rows)",
             minLength=1,
             required=True,
         ),
     )
     columns = fields.List(
-        fields.String(
-            allow_none=False, description="Columns to group by on the table columns",
-        ),
+        fields.String(allow_none=False),
+        description="Columns to group by on the table columns",
     )
     metric_fill_value = fields.Number(
         description="Value to replace missing values with in aggregate calculations.",
@@ -749,6 +746,7 @@ class ChartDataPostProcessingOperationSchema(Schema):
                 "sort",
                 "diff",
                 "compare",
+                "resample",
             )
         ),
         example="aggregate",
@@ -963,7 +961,9 @@ class ChartDataQueryObjectSchema(Schema):
         deprecated=True,
     )
     groupby = fields.List(
-        fields.String(description="Columns by which to group the query.",),
+        fields.String(),
+        description="Columns by which to group the query. "
+        "This field is deprecated, use `columns` instead.",
         allow_none=True,
     )
     metrics = fields.List(
@@ -1011,12 +1011,33 @@ class ChartDataQueryObjectSchema(Schema):
     is_timeseries = fields.Boolean(
         description="Is the `query_object` a timeseries.", allow_none=True,
     )
+    series_columns = fields.List(
+        fields.String(),
+        description="Columns to use when limiting series count. "
+        "All columns must be present in the `columns` property. "
+        "Requires `series_limit` and `series_limit_metric` to be set.",
+        allow_none=True,
+    )
+    series_limit = fields.Integer(
+        description="Maximum number of series. "
+        "Requires `series` and `series_limit_metric` to be set.",
+        allow_none=True,
+    )
+    series_limit_metric = fields.Raw(
+        description="Metric used to limit timeseries queries by. "
+        "Requires `series` and `series_limit` to be set.",
+        allow_none=True,
+    )
     timeseries_limit = fields.Integer(
-        description="Maximum row count for timeseries queries. Default: `0`",
+        description="Maximum row count for timeseries queries. "
+        "This field is deprecated, use `series_limit` instead."
+        "Default: `0`",
         allow_none=True,
     )
     timeseries_limit_metric = fields.Raw(
-        description="Metric used to limit timeseries queries by.", allow_none=True,
+        description="Metric used to limit timeseries queries by. "
+        "This field is deprecated, use `series_limit_metric` instead.",
+        allow_none=True,
     )
     row_limit = fields.Integer(
         description='Maximum row count (0=disabled). Default: `config["ROW_LIMIT"]`',
