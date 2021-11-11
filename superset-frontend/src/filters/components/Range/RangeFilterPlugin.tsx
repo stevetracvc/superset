@@ -124,10 +124,16 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     defaultValue ?? [min, max],
   );
   const [marks, setMarks] = useState<{ [key: number]: string }>({});
-  const transformScale = (val: number | null) =>
-    logScale && val ? (val > 0 ? Math.log10(val) : 0) : val;
-  const inverseScale = (val: number | null) =>
-    logScale && val ? Math.pow(10, val) : val;
+  const transformScale = useCallback(
+    (val: number | null) =>
+      logScale && val ? (val > 0 ? Math.log10(val) : 0) : val,
+    [logScale],
+  );
+
+  const inverseScale = useCallback(
+    (val: number | null) => (logScale && val ? Math.pow(10, val) : val),
+    [logScale],
+  );
 
   // value is transformed
   const getBounds = useCallback(
@@ -140,8 +146,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
         upper: upperRaw < Number(transformScale(max)) ? upperRaw : null,
       };
     },
-    [max, min],
-);
+    [max, min, transformScale],
+  );
 
   // lower and upper are NOT transformed!!!!
   const getLabel = (lower: number | null, upper: number | null): string => {
@@ -158,19 +164,19 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   };
 
   // lower & upper are transformed
-  const getMarks = (
-    lower: number | null,
-    upper: number | null,
-  ): { [key: number]: string } => {
-    const newMarks: { [key: number]: string } = {};
-    if (lower !== null) {
-      newMarks[lower] = numberFormatter(inverseScale(lower));
-    }
-    if (upper !== null) {
-      newMarks[upper] = numberFormatter(inverseScale(upper));
-    }
-    return newMarks;
-  };
+  const getMarks = useCallback(
+    (lower: number | null, upper: number | null): { [key: number]: string } => {
+      const newMarks: { [key: number]: string } = {};
+      if (lower !== null) {
+        newMarks[lower] = numberFormatter(inverseScale(lower));
+      }
+      if (upper !== null) {
+        newMarks[upper] = numberFormatter(inverseScale(upper));
+      }
+      return newMarks;
+    },
+    [inverseScale],
+  );
 
   const handleAfterChange = useCallback(
     (value: [number, number]): void => {
@@ -192,10 +198,10 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
         },
       });
     },
-    [col, getBounds, setDataMask],
+    [col, getBounds, setDataMask, getMarks, inverseScale],
   );
 
-    // value is transformed
+  // value is transformed
   const handleChange = useCallback((value: [number, number]) => {
     setValue(value);
   }, []);
@@ -220,7 +226,10 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     return undefined;
   }, [filterState.validateMessage, filterState.validateStatus]);
 
-  const minMax = useMemo(() => value ?? [transformScale(min) ?? 0, transformScale(max)], [max, min, value]);
+  const minMax = useMemo(
+    () => value ?? [transformScale(min) ?? 0, transformScale(max)],
+    [max, min, value, transformScale],
+  );
 
   return (
     <FilterPluginStyle height={height} width={width}>
