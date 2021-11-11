@@ -75,35 +75,6 @@ const Wrapper = styled.div<{ validateStatus?: 'error' | 'warning' | 'info' }>`
 
 const numberFormatter = getNumberFormatter(NumberFormats.SMART_NUMBER);
 
-const tipFormatter = (value: number) => numberFormatter(value);
-
-const getLabel = (lower: number | null, upper: number | null): string => {
-  if (lower !== null && upper !== null) {
-    return `${numberFormatter(lower)} ≤ x ≤ ${numberFormatter(upper)}`;
-  }
-  if (lower !== null) {
-    return `x ≥ ${numberFormatter(lower)}`;
-  }
-  if (upper !== null) {
-    return `x ≤ ${numberFormatter(upper)}`;
-  }
-  return '';
-};
-
-const getMarks = (
-  lower: number | null,
-  upper: number | null,
-): { [key: number]: string } => {
-  const newMarks: { [key: number]: string } = {};
-  if (lower !== null) {
-    newMarks[lower] = numberFormatter(lower);
-  }
-  if (upper !== null) {
-    newMarks[upper] = numberFormatter(upper);
-  }
-  return newMarks;
-};
-
 export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   const {
     data,
