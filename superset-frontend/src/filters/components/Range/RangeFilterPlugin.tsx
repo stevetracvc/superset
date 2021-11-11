@@ -122,8 +122,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     [logScale],
   );
 
-  const tipFormatter = (value: number) => numberFormatter(
-    inverseScale(Number(value)));
+  const tipFormatter = (value: number) =>
+    numberFormatter(inverseScale(Number(value)));
 
   // lower & upper are transformed
   const getMarks = useCallback(
