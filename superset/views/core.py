@@ -60,6 +60,7 @@ from superset import (
     viz,
 )
 from superset.charts.dao import ChartDAO
+from superset.common.chart_data import ChartDataResultFormat, ChartDataResultType
 from superset.common.db_query_status import QueryStatus
 from superset.connectors.base.models import BaseDatasource
 from superset.connectors.connector_registry import ConnectorRegistry
@@ -167,7 +168,7 @@ DAR = DatasourceAccessRequest
 logger = logging.getLogger(__name__)
 
 DATABASE_KEYS = [
-    "allow_csv_upload",
+    "allow_file_upload",
     "allow_ctas",
     "allow_cvas",
     "allow_dml",
@@ -473,13 +474,13 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
                 headers=generate_download_headers("csv", f"{slice_name}_{now_str}"),
             )
 
-        if response_type == utils.ChartDataResultType.QUERY:
+        if response_type == ChartDataResultType.QUERY:
             return self.get_query_string_response(viz_obj)
 
-        if response_type == utils.ChartDataResultType.RESULTS:
+        if response_type == ChartDataResultType.RESULTS:
             return self.get_raw_results(viz_obj)
 
-        if response_type == utils.ChartDataResultType.SAMPLES:
+        if response_type == ChartDataResultType.SAMPLES:
             return self.get_samples(viz_obj)
 
         payload = viz_obj.get_payload()
@@ -607,11 +608,11 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
 
         TODO: break into one endpoint for each return shape"""
 
-        response_type = utils.ChartDataResultFormat.JSON.value
-        responses: List[
-            Union[utils.ChartDataResultFormat, utils.ChartDataResultType]
-        ] = list(utils.ChartDataResultFormat)
-        responses.extend(list(utils.ChartDataResultType))
+        response_type = ChartDataResultFormat.JSON.value
+        responses: List[Union[ChartDataResultFormat, ChartDataResultType]] = list(
+            ChartDataResultFormat
+        )
+        responses.extend(list(ChartDataResultType))
         for response_option in responses:
             if request.args.get(response_option) == "true":
                 response_type = response_option
@@ -619,7 +620,7 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
 
         # Verify user has permission to export CSV file
         if (
-            response_type == utils.ChartDataResultFormat.CSV
+            response_type == ChartDataResultFormat.CSV
             and not security_manager.can_access("can_csv", "Superset")
         ):
             return json_error_response(
@@ -637,7 +638,7 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
             # TODO: support CSV, SQL query and other non-JSON types
             if (
                 is_feature_enabled("GLOBAL_ASYNC_QUERIES")
-                and response_type == utils.ChartDataResultFormat.JSON
+                and response_type == ChartDataResultFormat.JSON
             ):
                 # First, look for the chart query results in the cache.
                 try:
@@ -2356,6 +2357,7 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
         )
 
     @has_access_api
+    @handle_api_exception
     @expose("/stop_query/", methods=["POST"])
     @event_logger.log_this
     @backoff.on_exception(
@@ -2884,7 +2886,7 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
         db_id = int(request.args["db_id"])
         database = db.session.query(Database).filter_by(id=db_id).one()
         try:
-            schemas_allowed = database.get_schema_access_for_csv_upload()
+            schemas_allowed = database.get_schema_access_for_file_upload()
             if security_manager.can_access_database(database):
                 return self.json_response(schemas_allowed)
             # the list schemas_allowed should not be empty here

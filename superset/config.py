@@ -37,7 +37,7 @@ from celery.schedules import crontab
 from dateutil import tz
 from flask import Blueprint
 from flask_appbuilder.security.manager import AUTH_DB
-from pandas.io.parsers import STR_NA_VALUES
+from pandas._libs.parsers import STR_NA_VALUES  # pylint: disable=no-name-in-module
 from typing_extensions import Literal
 from werkzeug.local import LocalProxy
 
@@ -53,6 +53,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from flask_appbuilder.security.sqla import models
+
     from superset.connectors.sqla.models import SqlaTable
     from superset.models.core import Database
 
@@ -391,6 +392,7 @@ DEFAULT_FEATURE_FLAGS: Dict[str, bool] = {
     "OMNIBAR": False,
     "DASHBOARD_RBAC": False,
     "ENABLE_EXPLORE_DRAG_AND_DROP": False,
+    "ENABLE_FILTER_BOX_MIGRATION": False,
     "ENABLE_DND_WITH_CLICK_UX": False,
     # Enabling ALERTS_ATTACH_REPORTS, the system sends email and slack message
     # with screenshot and link
@@ -862,7 +864,7 @@ def CSV_TO_HIVE_UPLOAD_DIRECTORY_FUNC(  # pylint: disable=invalid-name
 UPLOADED_CSV_HIVE_NAMESPACE: Optional[str] = None
 
 # Function that computes the allowed schemas for the CSV uploads.
-# Allowed schemas will be a union of schemas_allowed_for_csv_upload
+# Allowed schemas will be a union of schemas_allowed_for_file_upload
 # db configuration and a result of this function.
 
 # mypy doesn't catch that if case ensures list content being always str
@@ -1300,7 +1302,7 @@ if CONFIG_PATH_ENV_VAR in os.environ:
 elif importlib.util.find_spec("superset_config") and not is_test():
     try:
         import superset_config  # pylint: disable=import-error
-        from superset_config import *  # type: ignore # pylint: disable=import-error,wildcard-import
+        from superset_config import *  # type: ignore # pylint: disable=import-error,wildcard-import,unused-wildcard-import
 
         print(f"Loaded your LOCAL configuration at [{superset_config.__file__}]")
     except Exception:

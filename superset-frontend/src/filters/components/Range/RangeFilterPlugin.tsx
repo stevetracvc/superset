@@ -75,6 +75,20 @@ const Wrapper = styled.div<{ validateStatus?: 'error' | 'warning' | 'info' }>`
 
 const numberFormatter = getNumberFormatter(NumberFormats.SMART_NUMBER);
 
+// lower and upper are NOT transformed!!!!
+const getLabel = (lower: number | null, upper: number | null): string => {
+  if (lower !== null && upper !== null) {
+    return `${numberFormatter(lower)} ≤ x ≤ ${numberFormatter(upper)}`;
+  }
+  if (lower !== null) {
+    return `x ≥ ${numberFormatter(lower)}`;
+  }
+  if (upper !== null) {
+    return `x ≤ ${numberFormatter(upper)}`;
+  }
+  return '';
+};
+
 export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   const {
     data,
@@ -95,6 +109,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     defaultValue ?? [min, max],
   );
   const [marks, setMarks] = useState<{ [key: number]: string }>({});
+
+  // these could be replaced with a property instead, to allow custom transforms
   const transformScale = useCallback(
     (val: number | null) =>
       logScale && val ? (val > 0 ? Math.log10(val) : 0) : val,
@@ -106,33 +122,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     [logScale],
   );
 
-  // value is transformed
-  const getBounds = useCallback(
-    (
-      value: [number, number],
-    ): { lower: number | null; upper: number | null } => {
-      const [lowerRaw, upperRaw] = value;
-      return {
-        lower: lowerRaw > Number(transformScale(min)) ? lowerRaw : null,
-        upper: upperRaw < Number(transformScale(max)) ? upperRaw : null,
-      };
-    },
-    [max, min, transformScale],
-  );
-
-  // lower and upper are NOT transformed!!!!
-  const getLabel = (lower: number | null, upper: number | null): string => {
-    if (lower !== null && upper !== null) {
-      return `${numberFormatter(lower)} ≤ x ≤ ${numberFormatter(upper)}`;
-    }
-    if (lower !== null) {
-      return `x ≥ ${numberFormatter(lower)}`;
-    }
-    if (upper !== null) {
-      return `x ≤ ${numberFormatter(upper)}`;
-    }
-    return '';
-  };
+  const tipFormatter = (value: number) =>
+    numberFormatter(inverseScale(Number(value)));
 
   // lower & upper are transformed
   const getMarks = useCallback(
@@ -147,6 +138,20 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
       return newMarks;
     },
     [inverseScale],
+  );
+
+  // value is transformed
+  const getBounds = useCallback(
+    (
+      value: [number, number],
+    ): { lower: number | null; upper: number | null } => {
+      const [lowerRaw, upperRaw] = value;
+      return {
+        lower: lowerRaw > Number(transformScale(min)) ? lowerRaw : null,
+        upper: upperRaw < Number(transformScale(max)) ? upperRaw : null,
+      };
+    },
+    [max, min, transformScale],
   );
 
   const handleAfterChange = useCallback(
@@ -224,7 +229,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
               value={minMax}
               onAfterChange={handleAfterChange}
               onChange={handleChange}
-              tipFormatter={val => numberFormatter(inverseScale(Number(val)))}
+              tipFormatter={tipFormatter}
               marks={marks}
               step={stepSize}
             />

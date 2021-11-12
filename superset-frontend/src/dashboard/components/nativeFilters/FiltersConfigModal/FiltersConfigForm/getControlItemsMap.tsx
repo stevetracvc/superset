@@ -263,7 +263,7 @@ export default function getControlItemsMap({
                     [controlItem.name]: value,
                     defaultDataMask: null,
                   });
-                  controlItem.config.value = value;
+                  // controlItem.config.value = value;
                   forceUpdate();
                 }}
                 value={controlItem.config.value || initialValue}

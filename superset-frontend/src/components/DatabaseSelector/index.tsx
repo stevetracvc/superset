@@ -41,6 +41,7 @@ const DatabaseSelectorWrapper = styled.div`
     }
 
     .select {
+      width: calc(100% - 30px - ${theme.gridUnit}px);
       flex: 1;
     }
 
@@ -55,6 +56,15 @@ const LabelStyle = styled.div`
   flex-direction: row;
   align-items: center;
   margin-left: ${({ theme }) => theme.gridUnit - 2}px;
+
+  .backend {
+    overflow: visible;
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 `;
 
 type DatabaseValue = {
@@ -97,8 +107,10 @@ const SelectLabel = ({
   databaseName: string;
 }) => (
   <LabelStyle>
-    <Label>{backend}</Label>
-    {databaseName}
+    <Label className="backend">{backend}</Label>
+    <span className="name" title={databaseName}>
+      {databaseName}
+    </span>
   </LabelStyle>
 );
 
@@ -201,22 +213,18 @@ export default function DatabaseSelector({
       // TODO: Would be nice to add pagination in a follow-up. Needs endpoint changes.
       SupersetClient.get({ endpoint })
         .then(({ json }) => {
-          const options = json.result
-            .map((s: string) => ({
-              value: s,
-              label: s,
-              title: s,
-            }))
-            .sort((a: { label: string }, b: { label: string }) =>
-              a.label.localeCompare(b.label),
-            );
+          const options = json.result.map((s: string) => ({
+            value: s,
+            label: s,
+            title: s,
+          }));
           if (onSchemasLoad) {
             onSchemasLoad(options);
           }
           setSchemaOptions(options);
           setLoadingSchemas(false);
         })
-        .catch(e => {
+        .catch(() => {
           setLoadingSchemas(false);
           handleError(t('There was an error loading the schemas'));
         });
