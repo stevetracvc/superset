@@ -25,7 +25,7 @@ import {
 import { RefObject } from 'react';
 import { PluginFilterHooks, PluginFilterStylesProps } from '../types';
 
-interface PluginFilterSelectCustomizeProps {
+interface PluginFilterRangeCustomizeProps {
   max?: number;
   min?: number;
   stepSize: number;
@@ -34,7 +34,7 @@ interface PluginFilterSelectCustomizeProps {
 
 export type PluginFilterRangeQueryFormData = QueryFormData &
   PluginFilterStylesProps &
-  PluginFilterSelectCustomizeProps;
+  PluginFilterRangeCustomizeProps;
 
 export type PluginFilterRangeProps = PluginFilterStylesProps & {
   data: DataRecord[];
@@ -43,3 +43,10 @@ export type PluginFilterRangeProps = PluginFilterStylesProps & {
   behaviors: Behavior[];
   inputRef: RefObject<any>;
 } & PluginFilterHooks;
+
+export const DEFAULT_FORM_DATA: PluginFilterRangeCustomizeProps = {
+  max: undefined,
+  min: undefined,
+  stepSize: 1,
+  logScale: false,
+};
