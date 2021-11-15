@@ -28,11 +28,15 @@ from marshmallow import ValidationError
 
 from superset import is_feature_enabled, security_manager
 from superset.charts.api import ChartRestApi
-from superset.charts.commands.data import ChartDataCommand
 from superset.charts.commands.exceptions import (
     ChartDataCacheLoadError,
     ChartDataQueryFailedError,
 )
+from superset.charts.data.commands import (
+    ChartDataCommand,
+    CreateAsyncChartDataJobCommand,
+)
+from superset.charts.data.query_context_cache_loader import QueryContextCacheLoader
 from superset.charts.post_processing import apply_post_process
 from superset.common.chart_data import ChartDataResultFormat, ChartDataResultType
 from superset.exceptions import QueryObjectValidationError
@@ -144,14 +148,14 @@ class ChartDataRestApi(ChartRestApi):
             and query_context.result_format == ChartDataResultFormat.JSON
             and query_context.result_type == ChartDataResultType.FULL
         ):
-            return self._run_async(command)
+            return self._run_async(json_body, command)
 
         try:
             form_data = json.loads(chart.params)
         except (TypeError, json.decoder.JSONDecodeError):
             form_data = {}
 
-        return self.get_data_response(command, form_data=form_data)
+        return self._get_data_response(command, form_data=form_data)
 
     @expose("/data", methods=["POST"])
     @protect()
@@ -230,9 +234,9 @@ class ChartDataRestApi(ChartRestApi):
             and query_context.result_format == ChartDataResultFormat.JSON
             and query_context.result_type == ChartDataResultType.FULL
         ):
-            return self._run_async(command)
+            return self._run_async(json_body, command)
 
-        return self.get_data_response(command)
+        return self._get_data_response(command)
 
     @expose("/data/<cache_key>", methods=["GET"])
     @protect()
@@ -276,7 +280,7 @@ class ChartDataRestApi(ChartRestApi):
         """
         command = ChartDataCommand()
         try:
-            cached_data = command.load_query_context_from_cache(cache_key)
+            cached_data = self._load_query_context_form_from_cache(cache_key)
             command.set_query_context(cached_data)
             command.validate()
         except ChartDataCacheLoadError:
@@ -286,9 +290,11 @@ class ChartDataRestApi(ChartRestApi):
                 message=_("Request is incorrect: %(error)s", error=error.messages)
             )
 
-        return self.get_data_response(command, True)
+        return self._get_data_response(command, True)
 
-    def _run_async(self, command: ChartDataCommand) -> Response:
+    def _run_async(
+        self, form_data: Dict[str, Any], command: ChartDataCommand
+    ) -> Response:
         """
         Execute command as an async query.
         """
@@ -302,21 +308,22 @@ class ChartDataRestApi(ChartRestApi):
 
         # If the chart query has already been cached, return it immediately.
         if already_cached_result:
-            return self.send_chart_response(result)
+            return self._send_chart_response(result)
 
         # Otherwise, kick off a background job to run the chart query.
         # Clients will either poll or be notified of query completion,
         # at which point they will call the /data/<cache_key> endpoint
         # to retrieve the results.
+        async_command = CreateAsyncChartDataJobCommand()
         try:
-            command.validate_async_request(request)
+            async_command.validate(request)
         except AsyncQueryTokenException:
             return self.response_401()
 
-        result = command.run_async(g.user.get_id())
+        result = async_command.run(form_data, g.user.get_id())
         return self.response(202, **result)
 
-    def send_chart_response(
+    def _send_chart_response(
         self, result: Dict[Any, Any], form_data: Optional[Dict[str, Any]] = None,
     ) -> Response:
         result_type = result["query_context"].result_type
@@ -349,7 +356,7 @@ class ChartDataRestApi(ChartRestApi):
 
         return self.response_400(message=f"Unsupported result_format: {result_format}")
 
-    def get_data_response(
+    def _get_data_response(
         self,
         command: ChartDataCommand,
         force_cached: bool = False,
@@ -362,4 +369,8 @@ class ChartDataRestApi(ChartRestApi):
         except ChartDataQueryFailedError as exc:
             return self.response_400(message=exc.message)
 
-        return self.send_chart_response(result, form_data)
+        return self._send_chart_response(result, form_data)
+
+    # pylint: disable=invalid-name, no-self-use
+    def _load_query_context_form_from_cache(self, cache_key: str) -> Dict[str, Any]:
+        return QueryContextCacheLoader.load(cache_key)
