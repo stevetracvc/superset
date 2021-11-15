@@ -43,10 +43,3 @@ export type PluginFilterRangeProps = PluginFilterStylesProps & {
   behaviors: Behavior[];
   inputRef: RefObject<any>;
 } & PluginFilterHooks;
-
-export const DEFAULT_FORM_DATA: PluginFilterRangeCustomizeProps = {
-  max: undefined,
-  min: undefined,
-  stepSize: 1,
-  logScale: false,
-};
