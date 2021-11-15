@@ -480,7 +480,8 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
     # SRM may have been removed
     def send_chart_response(
-        self, result: Dict[Any, Any], form_data: Optional[Dict[str, Any]] = None,
+        self, result, form_data = None,
+#        self, result: Dict[Any, Any], form_data: Optional[Dict[str, Any]] = None,
     ) -> Response:
         result_type = result["query_context"].result_type
         result_format = result["query_context"].result_format
