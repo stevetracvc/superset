@@ -463,7 +463,7 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
     def generate_json(
         self, viz_obj: BaseViz, response_type: Optional[str] = None
     ) -> FlaskResponse:
-        if response_type == utils.ChartDataResultFormat.CSV:
+        if response_type == ChartDataResultFormat.CSV:
             # Load slice_name for a more useful CSV filename
             slice_id = viz_obj.form_data["slice_id"]
             slices = db.session.query(Slice).filter_by(id=slice_id).all()
