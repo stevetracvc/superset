@@ -22,8 +22,7 @@ import { FormItem } from 'src/components/Form';
 import Button from 'src/components/Button';
 import Tabs from 'src/components/Tabs';
 import { Select } from 'src/components';
-import
-{
+import {
   OptionsType,
   // OptionsTypePage
 } from 'src/components/Select/Select';
@@ -40,10 +39,20 @@ import Modal from 'src/components/Modal';
 import ModalTrigger from 'src/components/ModalTrigger';
 
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
-import withToasts from 'src/components/MessageToasts/withToasts';
+import withToasts from 'src/messageToasts/enhancers/withToasts';
+import { DataMaskStateWithId } from 'src/dataMask/types';
+
+import getDashboardUrl from 'src/dashboard/util/getDashboardUrl';
+import {
+  getActiveFilters,
+} from 'src/dashboard/util/activeDashboardFilters';
+// import {
+//   getAllActiveFilters,
+// //  getRelevantDataMask
+// } from 'src/dashboard/util/activeAllDashboardFilters';
+import { getShortUrl } from 'src/utils/urlUtils';
 // import { FeatureFlag, isFeatureEnabled } from 'src/featureFlags';
 const { TabPane } = Tabs;
-import { DataMaskStateWithId } from 'src/dataMask/types';
 
 // const StyledContainer = styled.div`
 //   display: flex;
@@ -151,16 +160,17 @@ const FilterSetTabs = {
 };
 
 const StyledTextArea = styled(TextArea)`
-width: 100%;
+  width: 100%;
 `;
 
-
-const handleErrorResponse = async (response : SupersetClientResponse | string) => {
+const handleErrorResponse = async (
+  response: SupersetClientResponse | string,
+) => {
   const { error, message } = await getClientErrorObject(response);
   let errorText = error || t('An error has occurred');
 
-  if (typeof message === 'object' && message["json_metadata"]) {
-    errorText = message["json_metadata"];
+  if (typeof message === 'object' && message.json_metadata) {
+    errorText = message.json_metadata;
   } else if (typeof message === 'string') {
     errorText = message;
 
@@ -199,11 +209,15 @@ type FilterSetSaveModalProps = {
   description: string;
   saveType: SaveType;
   triggerNode: JSX.Element;
-  onSave: (data: any, id: number | string,
-    filterSetTitle: string, saveType: SaveType) => void;
+  onSave: (
+    data: any,
+    id: number | string,
+    filterSetTitle: string,
+    saveType: SaveType,
+  ) => void;
   canOverwrite: boolean;
   lastModifiedTime: number;
-  show: boolean,
+  show: boolean;
   dashboardInfo: Record<string, any>;
   layout: Record<string, any>;
   dataMask: DataMaskStateWithId;
@@ -218,26 +232,25 @@ type FilterSetData = {
   filterSetId: number;
 };
 
-type FilterSetDataSet = {
-  [key: string]: FilterSetData
-};
+// type FilterSetDataSet = {
+//   [key: string]: FilterSetData;
+// };
 
 type FilterSetSaveModalState = {
   saveType: SaveType;
   newFilterSetTitle: string;
   newDescription: string | undefined;
   values: {
-    api: FilterSetData[],
+    api: FilterSetData[];
   };
   activeTabKey: string;
   errors: string[];
   loadUrl: string | undefined;
   description: string | undefined;
   filterSetTitle: string | undefined;
-  filterSets: FilterSetDataSet | undefined;
+  // filterSets: FilterSetDataSet | undefined;
   filterSetId: number;
 };
-
 
 const defaultProps = {
   saveType: SAVE_TYPE_NEWFILTER,
@@ -245,20 +258,23 @@ const defaultProps = {
   description: null,
 };
 
-const jsonToFilterSetData = (el : JsonObject) : FilterSetData => {
-  return { filterSetTitle: el.filterSetTitle,
-           shortUrl: el.shortUrl,
-           userId: el.userId,
-           description: el.description,
-           dashboardId: el.dashboardId,
-           filterSetId: el.filterSetId };
-};
+const jsonToFilterSetData = (el: JsonObject): FilterSetData => ({
+  filterSetTitle: el.filterSetTitle,
+  shortUrl: el.shortUrl,
+  userId: el.userId,
+  description: el.description,
+  dashboardId: el.dashboardId,
+  filterSetId: el.filterSetId,
+});
 
-
-class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, FilterSetSaveModalState> {
+class FilterSetSaveModal extends React.PureComponent<
+  FilterSetSaveModalProps,
+  FilterSetSaveModalState
+> {
   static defaultProps = defaultProps;
 
   modal: ModalTrigger | null;
+
   url: string;
 
   constructor(props: FilterSetSaveModalProps) {
@@ -266,7 +282,10 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
 
     this.state = {
       saveType: props.saveType,
-      newFilterSetTitle: `${props.dashboardTitle} ${new Date().toJSON().slice(0,10).replace(/-/g,'/')}`,
+      newFilterSetTitle: `${props.dashboardTitle} ${new Date()
+        .toJSON()
+        .slice(0, 10)
+        .replace(/-/g, '/')}`,
       values: {
         api: [],
       },
@@ -276,7 +295,7 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
       loadUrl: undefined,
       description: undefined,
       filterSetTitle: undefined,
-      filterSets: undefined,
+      // filterSets: undefined,
       filterSetId: 0,
     };
     this.modal = null;
@@ -293,13 +312,12 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
     this.fetchFilterSets();
   }
 
-  getFilterSelect() : OptionsType {
+  getFilterSelect(): OptionsType {
     const { api } = this.state.values;
     return api.map(item => ({
-        label: item.filterSetTitle,
-        value: item.filterSetId,
-      })
-    );
+      label: item.filterSetTitle,
+      value: item.filterSetId,
+    }));
   }
 
   setModalRef(ref: ModalTrigger) {
@@ -328,12 +346,11 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
       this.props.addDangerToast(
         t('You must pick a name for the new filter set'),
       );
-      return ;
-    } else if (saveType === SAVE_TYPE_NEWFILTER && !newDescription) {
-      this.props.addDangerToast(
-        t('You must describe this new filter set'),
-      );
-      return ;
+      return;
+    }
+    if (saveType === SAVE_TYPE_NEWFILTER && !newDescription) {
+      this.props.addDangerToast(t('You must describe this new filter set'));
+      return;
     }
 
     // var all_filters = getAllActiveFilters({
@@ -351,63 +368,67 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
       Object.entries({
         ...filters,
         // ...all_filters,
-    }).filter((x : [string, {values: any}]) => Object.keys(x[1].values).length))
+      }).filter(
+        (x: [string, { values: any }]) => Object.keys(x[1].values).length,
+      ),
+    );
 
-
-    var url = getDashboardUrl({
-          dataMask: this.props.dataMask,
-          pathname: window.location.pathname,
-          filters: finalFilters,
-          hash: window.location.hash,
+    const url = getDashboardUrl({
+      dataMask: this.props.dataMask,
+      pathname: window.location.pathname,
+      filters: finalFilters,
+      hash: window.location.hash,
     });
-    var ret = await getShortUrl(url);
+    const ret = await getShortUrl(url);
 
-    const data : FilterSetData = {
+    const data: FilterSetData = {
       filterSetTitle:
         saveType === SAVE_TYPE_NEWFILTER ? newFilterSetTitle : filterSetTitle,
       shortUrl: ret,
-      userId: userId,
-      description: saveType === SAVE_TYPE_NEWFILTER ? newDescription : description,
-      dashboardId: dashboardId,
+      userId,
+      description:
+        saveType === SAVE_TYPE_NEWFILTER ? newDescription : description,
+      dashboardId,
       filterSetId: -1,
     };
 
     this.insertFilterSet(data);
     this.props.addSuccessToast(
-      t('Filter set saved with name: "' + data.filterSetTitle + '"'),
+      t(`Filter set saved with name: "${data.filterSetTitle}"`),
     );
     this.modal?.close();
   }
 
   deleteFilterSelected() {
     const { filterSetId, filterSetTitle } = this.state;
-    if (filterSetId){
-      this.deleteFilterSet(filterSetId)
+    if (filterSetId) {
+      this.deleteFilterSet(filterSetId);
       this.props.addSuccessToast(
-        t('Filter set deleted with name: "' + filterSetTitle + '"'),
+        t(`Filter set deleted with name: "${filterSetTitle}"`),
       );
       this.setState({
-        filterSetTitle: "",
+        filterSetTitle: '',
         loadUrl: undefined,
         description: undefined,
         filterSetId: 0,
       });
-    }
-    else{
-      this.props.addDangerToast(
-        t('You must pick a filter set to delete!'),
-      );
+    } else {
+      this.props.addDangerToast(t('You must pick a filter set to delete!'));
     }
   }
 
-  filterFilterSetData(obj: FilterSetData[], prop: string, val: any) : FilterSetData {
-    var ret = obj.filter(el => el[prop] == val).slice(0,1)[0];
+  filterFilterSetData(
+    obj: FilterSetData[],
+    prop: string,
+    val: any,
+  ): FilterSetData {
+    const ret = obj.filter(el => el[prop] === val).slice(0, 1)[0];
     return ret;
   }
 
   loadFilters() {
     const { loadUrl } = this.state;
-    if (loadUrl){
+    if (loadUrl) {
       window.location.href = loadUrl;
     }
   }
@@ -421,7 +442,7 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
       this.setState(state => ({
         values: {
           ...state.values,
-          api: api,
+          api,
         },
       }));
     }, handleErrorResponse);
@@ -432,7 +453,7 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
       endpoint: `/superset/trac/filter_set/${this.props.dashboardId}/`,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-    }).then(({ json: { result } }) => {
+    }).then(() => {
       this.props.addSuccessToast(t('The filter set has been saved'));
       this.fetchFilterSets();
     }, handleErrorResponse);
@@ -442,41 +463,48 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
     SupersetClient.put({
       endpoint: `/superset/trac/filter_set/${this.props.dashboardId}/`,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({fs_id: filterSetId}),
-    }).then(({ json: { result } }) => {
+      body: JSON.stringify({ fs_id: filterSetId }),
+    }).then(() => {
       this.props.addSuccessToast(t('The filter set has been deleted'));
       this.fetchFilterSets();
     }, handleErrorResponse);
   }
 
-  onSelectChange(filterSetId: any){
-    var v = this.filterFilterSetData(this.state.values.api,
-      "filterSetId", filterSetId);
-    this.setState({
-      loadUrl: v.shortUrl || "",
-      description: v.description || "",
-      filterSetTitle: v.filterSetTitle || "",
-      filterSetId: v.filterSetId || 0,
+  onSelectChange(filterSetId: any) {
+    this.setState(prevState => {
+      const v = this.filterFilterSetData(
+        prevState.values.api,
+        'filterSetId',
+        filterSetId,
+      );
+      return {
+        loadUrl: v.shortUrl || '',
+        description: v.description || '',
+        filterSetTitle: v.filterSetTitle || '',
+        filterSetId: v.filterSetId || 0,
+      };
     });
   }
 
   render() {
-    const { errors, activeTabKey, loadUrl,
-      newFilterSetTitle, description } = this.state;
+    const { errors, activeTabKey, loadUrl, newFilterSetTitle, description } =
+      this.state;
     const options = this.getFilterSelect();
 
     let deleteButton;
-    if (activeTabKey === FilterSetTabs.load.key){
-      deleteButton = <Button
-        onClick={this.deleteFilterSelected}
-        buttonSize="small"
-        buttonStyle="primary"
-        className="m-r-5"
-        disabled={errors.length > 0}
-        cta
-      >
-        {t('Delete Filter')}
-      </Button>;
+    if (activeTabKey === FilterSetTabs.load.key) {
+      deleteButton = (
+        <Button
+          onClick={this.deleteFilterSelected}
+          buttonSize="small"
+          buttonStyle="primary"
+          className="m-r-5"
+          disabled={errors.length > 0}
+          cta
+        >
+          {t('Delete Filter')}
+        </Button>
+      );
     }
 
     return (
@@ -499,27 +527,29 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
               {t('Cancel')}
             </Button>
             <Button
-              onClick={activeTabKey === FilterSetTabs.save.key ?
-                 this.saveFilter : this.loadFilters}
+              onClick={
+                activeTabKey === FilterSetTabs.save.key
+                  ? this.saveFilter
+                  : this.loadFilters
+              }
               buttonSize="small"
               buttonStyle="primary"
               className="m-r-5"
               disabled={errors.length > 0}
               cta
             >
-              {activeTabKey === FilterSetTabs.save.key ?
-                 t(FilterSetTabs.save.name) : t(FilterSetTabs.load.name)}
+              {activeTabKey === FilterSetTabs.save.key
+                ? t(FilterSetTabs.save.name)
+                : t(FilterSetTabs.load.name)}
             </Button>
           </>
         }
         responsive
         modalBody={
-          <div
-            style={{minHeight: '400px'}}
-          >
+          <div style={{ minHeight: '400px' }}>
             <StyledTabs
               activeKey={activeTabKey}
-              onChange={activeKey => this.setState({activeTabKey: activeKey})}
+              onChange={activeKey => this.setState({ activeTabKey: activeKey })}
               centered
             >
               <TabPane
@@ -569,7 +599,7 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
                   <StyledLabel>{t('Filter Set Description')}</StyledLabel>
                   <StyledTextArea
                     name="filterSetDescription"
-                    disabled={true}
+                    disabled
                     value={description}
                     rows={10}
                   />
@@ -579,7 +609,7 @@ class FilterSetSaveModal extends React.PureComponent<FilterSetSaveModalProps, Fi
                   <Input
                     type="text"
                     name="filterSetUrl"
-                    disabled={true}
+                    disabled
                     value={loadUrl}
                   />
                 </StyledRowContainer>
