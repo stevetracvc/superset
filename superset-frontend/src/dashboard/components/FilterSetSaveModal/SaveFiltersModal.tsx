@@ -22,21 +22,22 @@ import { Radio } from 'src/components/Radio';
 import { RadioChangeEvent, Input } from 'src/common/components';
 // import { Dropdown } from 'src/common/components';
 import Button from 'src/components/Button';
-import { t,
+import {
+  t,
   // JsonResponse, SupersetClient
 } from '@superset-ui/core';
 import { getShortUrl } from 'src/utils/urlUtils';
 
 import ModalTrigger from 'src/components/ModalTrigger';
-// import Checkbox from 'src/components/Checkbox';
-const SAVE_TYPE_OVERWRITE = "overwriteFilter";
-const SAVE_TYPE_NEWFILTER = "newFilter";
-
-// for localStorage
-const LS_KEY = "ls_filter_sets";
 
 import getDashboardUrl from 'src/dashboard/util/getDashboardUrl';
 import { getActiveFilters } from 'src/dashboard/util/activeDashboardFilters';
+// import Checkbox from 'src/components/Checkbox';
+const SAVE_TYPE_OVERWRITE = 'overwriteFilter';
+const SAVE_TYPE_NEWFILTER = 'newFilter';
+
+// for localStorage
+const LS_KEY = 'ls_filter_sets';
 
 type SaveType = typeof SAVE_TYPE_OVERWRITE | typeof SAVE_TYPE_NEWFILTER;
 
@@ -49,8 +50,12 @@ type SaveFilterModalProps = {
   dashboardId: number;
   saveType: SaveType;
   triggerNode: JSX.Element;
-  onSave: (data: any, id: number | string,
-    filterTitle: string, saveType: SaveType) => void;
+  onSave: (
+    data: any,
+    id: number | string,
+    filterTitle: string,
+    saveType: SaveType,
+  ) => void;
   canOverwrite: boolean;
   lastModifiedTime: number;
 };
@@ -65,10 +70,14 @@ const defaultProps = {
   saveType: SAVE_TYPE_OVERWRITE,
 };
 
-class SaveFilterModal extends React.PureComponent<SaveFilterModalProps, SaveFilterModalState> {
+class SaveFilterModal extends React.PureComponent<
+  SaveFilterModalProps,
+  SaveFilterModalState
+> {
   static defaultProps = defaultProps;
 
   modal: ModalTrigger | null;
+
   url: string;
 
   constructor(props: SaveFilterModalProps) {
@@ -82,7 +91,10 @@ class SaveFilterModal extends React.PureComponent<SaveFilterModalProps, SaveFilt
 
     this.state = {
       saveType: props.saveType,
-      newFilterTitle: `${props.dashboardTitle} ${new Date().toJSON().slice(0,10).replace(/-/g,'/')}`,
+      newFilterTitle: `${props.dashboardTitle} ${new Date()
+        .toJSON()
+        .slice(0, 10)
+        .replace(/-/g, '/')}`,
       // shortUrl: this.url,
     };
     this.modal = null;
@@ -129,24 +141,26 @@ class SaveFilterModal extends React.PureComponent<SaveFilterModalProps, SaveFilt
   }
 
   async saveFilter() {
-    const { saveType, newFilterTitle,
+    const {
+      saveType,
+      newFilterTitle,
       // shortUrl
-     } = this.state;
+    } = this.state;
     const { filterTitle, dashboardId, userId } = this.props;
-    var url = getDashboardUrl({
-          pathname: window.location.pathname,
-          filters: getActiveFilters(),
-          hash: window.location.hash,
-        });
-    var ret = await getShortUrl(url);
+    const url = getDashboardUrl({
+      pathname: window.location.pathname,
+      filters: getActiveFilters(),
+      hash: window.location.hash,
+    });
+    const ret = await getShortUrl(url);
     // var ret = shortUrl;
 
     const data = {
       filterTitle:
         saveType === SAVE_TYPE_NEWFILTER ? newFilterTitle : filterTitle,
       shortUrl: ret,
-      userId: userId,
-      dashboardId: dashboardId,
+      userId,
+      dashboardId,
     };
 
     if (saveType === SAVE_TYPE_NEWFILTER && !newFilterTitle) {
@@ -156,21 +170,21 @@ class SaveFilterModal extends React.PureComponent<SaveFilterModalProps, SaveFilt
     } else {
       this.writeFilter(data);
       this.props.addSuccessToast(
-        t('Filter set saved with name: "' + data.filterTitle + '"'),
+        t(`Filter set saved with name: "${data.filterTitle}"`),
       );
       this.modal?.close();
     }
   }
 
   writeFilter(data: any) {
-    var existingFilters = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    const existingFilters = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
     // existingFilters.push(data);
     existingFilters[data.filterTitle] = data;
     localStorage.setItem(LS_KEY, JSON.stringify(existingFilters));
   }
 
   readFilter(filterTitle: string) {
-    var existingFilters = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    const existingFilters = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
     return existingFilters[filterTitle];
   }
 
