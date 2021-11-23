@@ -151,9 +151,8 @@ const FilterBar: React.FC<FiltersBarProps> = ({
   const history = useHistory();
   const dataMaskApplied: DataMaskStateWithId = useNativeFiltersDataMask();
   const [editFilterSetId, setEditFilterSetId] = useState<number | null>(null);
-  const [dataMaskSelected, setDataMaskSelected] = useImmer<DataMaskStateWithId>(
-    dataMaskApplied,
-  );
+  const [dataMaskSelected, setDataMaskSelected] =
+    useImmer<DataMaskStateWithId>(dataMaskApplied);
   const dispatch = useDispatch();
   const filterSets = useFilterSets();
   const filterSetFilterValues = Object.values(filterSets);
@@ -267,9 +266,10 @@ const FilterBar: React.FC<FiltersBarProps> = ({
     });
   }, [dataMaskSelected, dispatch]);
 
-  const openFiltersBar = useCallback(() => toggleFiltersBar(true), [
-    toggleFiltersBar,
-  ]);
+  const openFiltersBar = useCallback(
+    () => toggleFiltersBar(true),
+    [toggleFiltersBar],
+  );
 
   useFilterUpdates(dataMaskSelected, setDataMaskSelected);
   const isApplyDisabled = checkIsApplyDisabled(
@@ -320,7 +320,9 @@ const FilterBar: React.FC<FiltersBarProps> = ({
             activeKey={editFilterSetId ? TabIds.AllFilters : undefined}
           >
             <Tabs.TabPane
-              tab={t(`All Filters (${filterValues.length})`)}
+              tab={t('All Filters (%(filterCount)d)', {
+                filterCount: filterValues.length,
+              })}
               key={TabIds.AllFilters}
               css={tabPaneStyle}
             >
@@ -340,7 +342,9 @@ const FilterBar: React.FC<FiltersBarProps> = ({
             </Tabs.TabPane>
             <Tabs.TabPane
               disabled={!!editFilterSetId}
-              tab={t(`Filter Sets (${filterSetFilterValues.length})`)}
+              tab={t('Filter Sets (%(filterSetCount)d)', {
+                filterSetCount: filterSetFilterValues.length,
+              })}
               key={TabIds.FilterSets}
               css={tabPaneStyle}
             >

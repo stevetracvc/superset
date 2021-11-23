@@ -37,7 +37,7 @@ from tests.integration_tests.test_app import app
 
 import pytest
 
-from superset.charts.data.commands import ChartDataCommand
+from superset.charts.data.commands.get_data_command import ChartDataCommand
 from superset.connectors.sqla.models import TableColumn, SqlaTable
 from superset.errors import SupersetErrorType
 from superset.extensions import async_query_manager, db
@@ -53,11 +53,8 @@ from superset.utils.core import (
 )
 from superset.common.chart_data import ChartDataResultFormat, ChartDataResultType
 
-
-from tests.integration_tests.fixtures.query_context import (
-    get_query_context,
-    ANNOTATION_LAYERS,
-)
+from tests.common.query_context_generator import ANNOTATION_LAYERS
+from tests.integration_tests.fixtures.query_context import get_query_context
 
 
 CHART_DATA_URI = "api/v1/chart/data"
