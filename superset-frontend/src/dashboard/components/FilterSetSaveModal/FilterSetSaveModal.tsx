@@ -39,7 +39,7 @@ import Modal from 'src/components/Modal';
 import ModalTrigger from 'src/components/ModalTrigger';
 
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
-import withToasts from 'src/messageToasts/enhancers/withToasts';
+import withToasts from 'src/components/MessageToasts/withToasts';
 import { DataMaskStateWithId } from 'src/dataMask/types';
 
 import getDashboardUrl from 'src/dashboard/util/getDashboardUrl';
