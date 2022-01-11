@@ -30,6 +30,7 @@ import { rgba } from 'emotion-rgba';
 import { PluginFilterRangeProps } from './types';
 import { StatusMessage, StyledFormItem, FilterPluginStyle } from '../common';
 import { getRangeExtraFormData } from '../../utils';
+import { scaleLog, scaleLinear } from 'd3-scale';
 
 const Wrapper = styled.div<{ validateStatus?: 'error' | 'warning' | 'info' }>`
   ${({ theme, validateStatus }) => `
@@ -106,23 +107,25 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   // @ts-ignore
   const { min, max }: { min: number; max: number } = row;
   const { groupby, defaultValue, inputRef, stepSize, logScale } = formData;
+  const scaler = (logScale) ? scaleLog().domain([min+1, max+1]) : scaleLinear().range([min, max]);
   const [col = ''] = ensureIsArray(groupby).map(getColumnLabel);
-  const [value, setValue] = useState<[number, number]>(
-    defaultValue ?? [min, max],
-  );
-  const [marks, setMarks] = useState<{ [key: number]: string }>({});
-
   // these could be replaced with a property instead, to allow custom transforms
   const transformScale = useCallback(
-    (val: number | null) =>
-      logScale && val ? (val > 0 ? Math.log10(val) : 0) : val,
+    (val: number | null) => {
+        return val ? scaler(val + 1 * logScale) : val;
+    },
     [logScale],
   );
 
   const inverseScale = useCallback(
-    (val: number | null) => (logScale && val ? Math.pow(10, val) : val),
+    (val: number | null) => val ? scaler.invert(val) - 1 * logScale : val,
     [logScale],
   );
+
+  const [value, setValue] = useState<[number, number]>(
+    (defaultValue ?? [min, max]).map(transformScale),
+  );
+  const [marks, setMarks] = useState<{ [key: number]: string }>({});
 
   const tipFormatter = (value: number) =>
     numberFormatter(inverseScale(Number(value)));
@@ -139,7 +142,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
       }
       return newMarks;
     },
-    [inverseScale],
+    [inverseScale, value],
   );
 
   // value is transformed
@@ -153,7 +156,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
         upper: upperRaw < Number(transformScale(max)) ? upperRaw : null,
       };
     },
-    [max, min, transformScale],
+    [max, min, transformScale, value],
   );
 
   const handleAfterChange = useCallback(
@@ -190,7 +193,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     if (row?.min === undefined && row?.max === undefined) {
       return;
     }
-    handleAfterChange(filterState.value ?? [min, max]);
+    handleAfterChange(filterState.value ?? [min, max].map(transformScale));
   }, [JSON.stringify(filterState.value), JSON.stringify(data)]);
 
   const formItemExtra = useMemo(() => {
@@ -205,7 +208,9 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   }, [filterState.validateMessage, filterState.validateStatus]);
 
   const minMax = useMemo(
-    () => value ?? [transformScale(min) ?? 0, transformScale(max)],
+    () => {
+      return value ?? [min ?? 0, max].map(transformScale);
+    },
     [max, min, value, transformScale],
   );
 
