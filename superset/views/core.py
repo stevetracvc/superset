@@ -3009,21 +3009,24 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
                                 primary_key_column) == primary_key_id).
                 values(all_values)
             )
-            logger.error(f"XXXXXXXXXXXXX: {stmt}")
+            logger.info(f"*****UPDATE QUERY*****: {stmt}")
 
             # session = thisDb.session()
             # session.execute(stmt)
             # session.commit()
             # return json_success(json.dumps({"updated": True}))
 
-            compiled_stmt = thisDb.compile_sqla_query(stmt)
-            logger.error(f"XXXXXXXXXXXXX: {compiled_stmt}")
-
-            command._execution_context.sql = compiled_stmt
-            command._execution_context.set_query(
-                command._execution_context.create_query()
-            )
-            command_result: CommandResult = command.run()
+            # this executes it as a prepared query, rather than values embedded
+            thisDb.get_sqla_engine().execute(stmt)
+            # the below will embed the values and execute raw SQL (bad)
+            # unsafe, and also doesn't work for all data types (dates?)
+            # compiled_stmt = thisDb.compile_sqla_query(stmt)
+            # logger.error(f"XXXXXXXXXXXXX: {compiled_stmt}")
+            # command._execution_context.sql = compiled_stmt
+            # command._execution_context.set_query(
+            #     command._execution_context.create_query()
+            # )
+            # command_result: CommandResult = command.run()
 
             return json_success(json.dumps({"updated": True}))
 
