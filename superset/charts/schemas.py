@@ -118,6 +118,8 @@ form_data_description = (
 )
 description_markeddown_description = "Sanitized HTML version of the chart description."
 owners_name_description = "Name of an owner of the chart."
+certified_by_description = "Person or group that has certified this chart"
+certification_details_description = "Details of the certification"
 
 #
 # OpenAPI method specification overrides
@@ -161,6 +163,8 @@ class ChartEntityResponseSchema(Schema):
     )
     form_data = fields.Dict(description=form_data_description)
     slice_url = fields.String(description=slice_url_description)
+    certified_by = fields.String(description=certified_by_description)
+    certification_details = fields.String(description=certification_details_description)
 
 
 class ChartPostSchema(Schema):
@@ -202,6 +206,10 @@ class ChartPostSchema(Schema):
         description=datasource_name_description, allow_none=True
     )
     dashboards = fields.List(fields.Integer(description=dashboards_description))
+    certified_by = fields.String(description=certified_by_description, allow_none=True)
+    certification_details = fields.String(
+        description=certification_details_description, allow_none=True
+    )
 
 
 class ChartPutSchema(Schema):
@@ -239,6 +247,10 @@ class ChartPutSchema(Schema):
         allow_none=True,
     )
     dashboards = fields.List(fields.Integer(description=dashboards_description))
+    certified_by = fields.String(description=certified_by_description, allow_none=True)
+    certification_details = fields.String(
+        description=certification_details_description, allow_none=True
+    )
 
 
 class ChartGetDatasourceObjectDataResponseSchema(Schema):
@@ -530,7 +542,7 @@ class ChartDataProphetOptionsSchema(ChartDataPostProcessingOperationOptionsSchem
     )
     periods = fields.Integer(
         descrption="Time periods (in units of `time_grain`) to predict into the future",
-        min=1,
+        min=0,
         example=7,
         required=True,
     )
@@ -892,6 +904,9 @@ class AnnotationLayerSchema(Schema):
         allow_none=True,
     )
     show = fields.Boolean(description="Should the layer be shown", required=True)
+    showLabel = fields.Boolean(
+        description="Should the label always be shown", allow_none=True,
+    )
     showMarkers = fields.Boolean(
         description="Should markers be shown. Only applies to line annotations.",
         required=True,
@@ -1146,6 +1161,8 @@ class ChartDataQueryContextSchema(Schema):
     result_type = EnumField(ChartDataResultType, by_value=True)
     result_format = EnumField(ChartDataResultFormat, by_value=True)
 
+    form_data = fields.Raw(allow_none=True, required=False)
+
     # pylint: disable=unused-argument
     @post_load
     def make_query_context(self, data: Dict[str, Any], **kwargs: Any) -> QueryContext:
@@ -1224,11 +1241,21 @@ class ChartDataResponseResult(Schema):
         description="Amount of rows in result set", allow_none=False,
     )
     data = fields.List(fields.Dict(), description="A list with results")
+    colnames = fields.List(fields.String(), description="A list of column names")
+    coltypes = fields.List(
+        fields.Integer(), description="A list of generic data types of each column"
+    )
     applied_filters = fields.List(
         fields.Dict(), description="A list with applied filters"
     )
     rejected_filters = fields.List(
         fields.Dict(), description="A list with rejected filters"
+    )
+    from_dttm = fields.Integer(
+        desciption="Start timestamp of time range", required=False, allow_none=True
+    )
+    to_dttm = fields.Integer(
+        desciption="End timestamp of time range", required=False, allow_none=True
     )
 
 

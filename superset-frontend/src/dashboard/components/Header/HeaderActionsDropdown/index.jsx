@@ -180,7 +180,6 @@ class HeaderActionsDropdown extends React.PureComponent {
       }
       case MENU_KEYS.TOGGLE_FULLSCREEN: {
         const url = getDashboardUrl({
-          dataMask: this.props.dataMask,
           pathname: window.location.pathname,
           filters: getActiveFilters(),
           hash: window.location.hash,
@@ -199,7 +198,6 @@ class HeaderActionsDropdown extends React.PureComponent {
       dashboardTitle,
       dashboardId,
       dashboardInfo,
-      dataMask,
       refreshFrequency,
       shouldPersistRefreshFrequency,
       editMode,
@@ -226,7 +224,6 @@ class HeaderActionsDropdown extends React.PureComponent {
     const emailBody = t('Check out this dashboard: ');
 
     const url = getDashboardUrl({
-      dataMask,
       pathname: window.location.pathname,
       filters: getActiveFilters(),
       hash: window.location.hash,
@@ -272,6 +269,7 @@ class HeaderActionsDropdown extends React.PureComponent {
             emailBody={emailBody}
             addSuccessToast={addSuccessToast}
             addDangerToast={addDangerToast}
+            dashboardId={dashboardId}
           />
         )}
         <Menu.Item

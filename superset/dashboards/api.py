@@ -54,6 +54,7 @@ from superset.dashboards.commands.update import UpdateDashboardCommand
 from superset.dashboards.dao import DashboardDAO
 from superset.dashboards.filters import (
     DashboardAccessFilter,
+    DashboardCertifiedFilter,
     DashboardFavoriteFilter,
     DashboardTitleOrSlugFilter,
     FilterRelatedRoles,
@@ -122,6 +123,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         "position_json",
         "json_metadata",
         "thumbnail_url",
+        "certified_by",
+        "certification_details",
         "changed_by.first_name",
         "changed_by.last_name",
         "changed_by.username",
@@ -151,6 +154,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     ]
 
     add_columns = [
+        "certified_by",
+        "certification_details",
         "dashboard_title",
         "slug",
         "owners",
@@ -174,7 +179,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     )
     search_filters = {
         "dashboard_title": [DashboardTitleOrSlugFilter],
-        "id": [DashboardFavoriteFilter],
+        "id": [DashboardFavoriteFilter, DashboardCertifiedFilter],
     }
     base_order = ("changed_on", "desc")
 
@@ -520,6 +525,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                         type: number
                       result:
                         $ref: '#/components/schemas/{{self.__class__.__name__}}.put'
+                      last_modified_time:
+                        type: number
             400:
               $ref: '#/components/responses/400'
             401:
@@ -542,7 +549,15 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             return self.response_400(message=error.messages)
         try:
             changed_model = UpdateDashboardCommand(g.user, pk, item).run()
-            response = self.response(200, id=changed_model.id, result=item)
+            last_modified_time = changed_model.changed_on.replace(
+                microsecond=0
+            ).timestamp()
+            response = self.response(
+                200,
+                id=changed_model.id,
+                result=item,
+                last_modified_time=last_modified_time,
+            )
         except DashboardNotFoundError:
             response = self.response_404()
         except DashboardForbiddenError:
@@ -717,9 +732,9 @@ class DashboardRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/500'
         """
         requested_ids = kwargs["rison"]
+        token = request.args.get("token")
 
         if is_feature_enabled("VERSIONED_EXPORT"):
-            token = request.args.get("token")
             timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
             root = f"dashboard_export_{timestamp}"
             filename = f"{root}.zip"
@@ -758,6 +773,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         resp.headers["Content-Disposition"] = generate_download_headers("json")[
             "Content-Disposition"
         ]
+        if token:
+            resp.set_cookie(token, "done", max_age=600)
         return resp
 
     @expose("/<pk>/thumbnail/<digest>/", methods=["GET"])
