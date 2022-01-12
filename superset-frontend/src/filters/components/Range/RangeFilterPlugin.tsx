@@ -30,6 +30,7 @@ import { rgba } from 'emotion-rgba';
 import { PluginFilterRangeProps } from './types';
 import { StatusMessage, StyledFormItem, FilterPluginStyle } from '../common';
 import { getRangeExtraFormData } from '../../utils';
+
 // could add in scalePow and others
 import { scaleLog, scaleLinear } from 'd3-scale';
 import { SingleValueType } from './SingleValueType';
