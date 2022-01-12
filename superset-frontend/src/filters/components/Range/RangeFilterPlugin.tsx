@@ -30,6 +30,9 @@ import { rgba } from 'emotion-rgba';
 import { PluginFilterRangeProps } from './types';
 import { StatusMessage, StyledFormItem, FilterPluginStyle } from '../common';
 import { getRangeExtraFormData } from '../../utils';
+
+// could add in scalePow and others
+import { scaleLog, scaleLinear } from 'd3-scale';
 import { SingleValueType } from './SingleValueType';
 
 const LIGHT_BLUE = '#99e7f0';
@@ -150,6 +153,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     logScale,
     enableSingleValue,
   } = formData;
+  const scaler = (logScale) ? scaleLog().domain([min+1, max+1]) : scaleLinear().range([min, max]);
 
   const enableSingleMinValue = enableSingleValue === SingleValueType.Minimum;
   const enableSingleMaxValue = enableSingleValue === SingleValueType.Maximum;
@@ -157,8 +161,21 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   const rangeValue = enableSingleValue === undefined;
 
   const [col = ''] = ensureIsArray(groupby).map(getColumnLabel);
+  // these could be replaced with a property instead, to allow custom transforms
+  const transformScale = useCallback(
+    (val: number | null) => {
+        return val ? scaler(val + 1 * logScale) : val;
+    },
+    [logScale],
+  );
+
+  const inverseScale = useCallback(
+    (val: number | null) => val ? scaler.invert(val) - 1 * logScale : val,
+    [logScale],
+  );
+
   const [value, setValue] = useState<[number, number]>(
-    defaultValue ?? [min, enableSingleExactValue ? min : max],
+    (defaultValue ?? [min, enableSingleExactValue ? min : max]).map(transformScale),
   );
   const [marks, setMarks] = useState<{ [key: number]: string }>({});
   const minIndex = 0;
@@ -191,7 +208,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
       }
       return newMarks;
     },
-    [inverseScale],
+    [inverseScale, value],
   );
 
   // value is transformed
@@ -210,7 +227,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
         upper: upperRaw < Number(transformScale(max)) ? upperRaw : null,
       };
     },
-    [max, min, transformScale, enableSingleExactValue],
+    [max, min, transformScale, value, enableSingleExactValue],
   );
 
   const handleAfterChange = useCallback(
@@ -248,7 +265,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
       return;
     }
 
-    let filterStateValue = filterState.value ?? [min, max];
+    let filterStateValue = filterState.value ?? [min, max].map(transformScale);
     if (enableSingleMaxValue) {
       const filterStateMax =
         filterStateValue[maxIndex] <= minMax[maxIndex]
@@ -288,7 +305,9 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   }, [filterState.validateMessage, filterState.validateStatus]);
 
   const minMax = useMemo(
-    () => value ?? [transformScale(min) ?? 0, transformScale(max)],
+    () => {
+      return value ?? [min ?? 0, max].map(transformScale);
+    },
     [max, min, value, transformScale],
   );
   useEffect(() => {
@@ -326,6 +345,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
           >
             {enableSingleMaxValue && (
               <Slider
+                min={transformScale(min) ?? 0}
+                max={transformScale(max) ?? undefined}
                 min={min}
                 max={max}
                 value={minMax[maxIndex]}
@@ -339,6 +360,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
             {enableSingleMinValue && (
               <StyledMinSlider
                 validateStatus={filterState.validateStatus}
+                min={transformScale(min) ?? 0}
+                max={transformScale(max) ?? undefined}
                 min={min}
                 max={max}
                 value={minMax[minIndex]}
@@ -351,6 +374,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
             )}
             {enableSingleExactValue && (
               <Slider
+                min={transformScale(min) ?? 0}
+                max={transformScale(max) ?? undefined}
                 min={min}
                 max={max}
                 included={false}
