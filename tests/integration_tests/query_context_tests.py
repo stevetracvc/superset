@@ -34,6 +34,7 @@ from superset.utils.core import AdhocMetricExpressionType, backend, TimeRangeEnd
 from tests.integration_tests.base_tests import SupersetTestCase
 from tests.integration_tests.fixtures.birth_names_dashboard import (
     load_birth_names_dashboard_with_slices,
+    load_birth_names_data,
 )
 from tests.integration_tests.fixtures.query_context import get_query_context
 
@@ -50,6 +51,7 @@ def get_sql_text(payload: Dict[str, Any]) -> str:
 
 
 class TestQueryContext(SupersetTestCase):
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
     def test_schema_deserialization(self):
         """
         Ensure that the deserialized QueryContext contains all required fields.

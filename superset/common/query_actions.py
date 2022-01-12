@@ -104,7 +104,7 @@ def _get_full(
     if status != QueryStatus.FAILED:
         payload["colnames"] = list(df.columns)
         payload["indexnames"] = list(df.index)
-        payload["coltypes"] = extract_dataframe_dtypes(df)
+        payload["coltypes"] = extract_dataframe_dtypes(df, datasource)
         payload["data"] = query_context.get_data(df)
         payload["result_format"] = query_context.result_format
     del payload["df"]
@@ -143,6 +143,8 @@ def _get_samples(
     query_obj.metrics = []
     query_obj.post_processing = []
     query_obj.columns = [o.column_name for o in datasource.columns]
+    query_obj.from_dttm = None
+    query_obj.to_dttm = None
     return _get_full(query_context, query_obj, force_cached)
 
 
