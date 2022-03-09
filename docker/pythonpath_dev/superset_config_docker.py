@@ -56,10 +56,13 @@ FEATURE_FLAGS = {
     "DASHBOARD_CROSS_FILTERS": True,
 #    "DASHBOARD_NATIVE_FILTERS_SET": True,
     "DASHBOARD_FILTERS_EXPERIMENTAL": True,
-    "ENABLE_EXPLORE_DRAG_AND_DROP": False,
+    "ENABLE_EXPLORE_DRAG_AND_DROP": True,
+    "ENABLE_DND_WITH_CLICK_UX": True,
     "ENABLE_TEMPLATE_PROCESSING": True,
-    "DYNAMIC_PLUGINS": True,
+    "ENABLE_TEMPLATE_REMOVE_FILTERS": True,
+    "DYNAMIC_PLUGINS": False,
     "DASHBOARD_RBAC": True,
+    "ALERT_REPORTS": True,
 #    "ENABLE_REACT_CRUD_VIEWS": True,
 }
 
@@ -91,6 +94,7 @@ FILTER_SELECT_ROW_LIMIT = 10000
 APP_ICON = "/static/assets/images/TRAC-logo.png"
 APP_ICON_WIDTH = 126
 LOGO_TARGET_PATH = "https://www.tracvc.com"
+LOGO_RIGHT_TEXT = "PRODUCTION"
 FAVICONS = [{"href": "/static/assets/images/cropped-TRAC_Icon-1-32x32.png"}]
 
 # not sure I need it
