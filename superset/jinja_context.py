@@ -241,7 +241,7 @@ class ExtraCache:
             if isinstance(val, list):
                 return_val.extend(val)
             elif val:
-                return_val.append(val)
+                return_val.append(val.rstrip())
 
         if (not return_val) and default:
             # If no values are found, return the default provided.
@@ -344,6 +344,10 @@ class ExtraCache:
                 ) and not isinstance(val, list):
                     val = [val]
 
+                try:
+                    val = [x.rstrip("\r") for x in val] # SRM
+                except TypeError:
+                    pass
                 filters.append({"op": op, "col": column, "val": val})
 
         return filters
