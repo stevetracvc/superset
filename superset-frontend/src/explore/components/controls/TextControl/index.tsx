@@ -21,7 +21,7 @@ import { legacyValidateNumber, legacyValidateInteger } from '@superset-ui/core';
 import debounce from 'lodash/debounce';
 import { FAST_DEBOUNCE } from 'src/constants';
 import ControlHeader from 'src/explore/components/ControlHeader';
-import { Input } from 'src/common/components';
+import { Input } from 'src/components/Input';
 
 type InputValueType = string | number;
 
@@ -46,7 +46,7 @@ const safeStringify = (value?: InputValueType | null) =>
   value == null ? '' : String(value);
 
 export default class TextControl<
-  T extends InputValueType = InputValueType
+  T extends InputValueType = InputValueType,
 > extends React.Component<TextControlProps<T>, TextControlState> {
   initialValue?: TextControlProps['value'];
 

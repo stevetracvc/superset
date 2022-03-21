@@ -20,17 +20,13 @@ import shortid from 'shortid';
 import { find, isEmpty } from 'lodash';
 
 import {
-  Filter,
-  NativeFilterType,
-} from 'src/dashboard/components/nativeFilters/types';
-import {
   FILTER_CONFIG_ATTRIBUTES,
   TIME_FILTER_LABELS,
   TIME_FILTER_MAP,
 } from 'src/explore/constants';
 import { DASHBOARD_FILTER_SCOPE_GLOBAL } from 'src/dashboard/reducers/dashboardFilters';
-import { TimeGranularity } from '@superset-ui/core';
-import { getChartIdsInFilterScope } from './activeDashboardFilters';
+import { Filter, NativeFilterType, TimeGranularity } from '@superset-ui/core';
+import { getChartIdsInFilterBoxScope } from './activeDashboardFilters';
 import getFilterConfigsFromFormdata from './getFilterConfigsFromFormdata';
 
 interface FilterConfig {
@@ -103,15 +99,18 @@ enum FILTER_COMPONENT_FILTER_TYPES {
   FILTER_RANGE = 'filter_range',
 }
 
-const getPreselectedValuesFromDashboard = (
-  preselectedFilters: PreselectedFiltersMeatadata,
-) => (filterKey: string, column: string) => {
-  if (preselectedFilters[filterKey] && preselectedFilters[filterKey][column]) {
-    // overwrite default values by dashboard default_filters
-    return preselectedFilters[filterKey][column];
-  }
-  return null;
-};
+const getPreselectedValuesFromDashboard =
+  (preselectedFilters: PreselectedFiltersMeatadata) =>
+  (filterKey: string, column: string) => {
+    if (
+      preselectedFilters[filterKey] &&
+      preselectedFilters[filterKey][column]
+    ) {
+      // overwrite default values by dashboard default_filters
+      return preselectedFilters[filterKey][column];
+    }
+    return null;
+  };
 
 const getFilterBoxDefaultValues = (config: FilterConfig) => {
   let defaultValues = config[FILTER_CONFIG_ATTRIBUTES.DEFAULT_VALUE];
@@ -148,7 +147,7 @@ const getFilterboxDependencies = (filterScopes: FilterScopesMetadata) => {
   Object.entries(filterScopes).forEach(([key, filterFields]) => {
     filterFieldsDependencies[key] = {};
     Object.entries(filterFields).forEach(([filterField, filterScope]) => {
-      filterFieldsDependencies[key][filterField] = getChartIdsInFilterScope({
+      filterFieldsDependencies[key][filterField] = getChartIdsInFilterBoxScope({
         filterScope,
       }).filter(
         chartId => filterChartIds.includes(chartId) && String(chartId) !== key,
@@ -218,9 +217,8 @@ export default function getNativeFilterConfig(
         time_range,
       } = slice.form_data;
 
-      const getDashboardDefaultValues = getPreselectedValuesFromDashboard(
-        preselectFilters,
-      );
+      const getDashboardDefaultValues =
+        getPreselectedValuesFromDashboard(preselectFilters);
 
       if (date_filter) {
         const { scope, immune }: FilterScopeType =
@@ -488,9 +486,8 @@ export default function getNativeFilterConfig(
     }
   });
 
-  const dependencies: FilterBoxDependencyMap = getFilterboxDependencies(
-    filterScopes,
-  );
+  const dependencies: FilterBoxDependencyMap =
+    getFilterboxDependencies(filterScopes);
   Object.entries(dependencies).forEach(([key, filterFields]) => {
     Object.entries(filterFields).forEach(([field, childrenChartIds]) => {
       const parentComponentId = filterBoxToFilterComponentMap[key][field];
@@ -513,7 +510,8 @@ export default function getNativeFilterConfig(
               childComponent.filterType as FILTER_COMPONENT_FILTER_TYPES,
             )
           ) {
-            childComponent.cascadeParentIds ||= [];
+            childComponent.cascadeParentIds =
+              childComponent.cascadeParentIds || [];
             childComponent.cascadeParentIds.push(parentComponentId);
           }
         });
