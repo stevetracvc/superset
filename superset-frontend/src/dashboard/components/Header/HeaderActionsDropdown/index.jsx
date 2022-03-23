@@ -340,7 +340,6 @@ class HeaderActionsDropdown extends React.PureComponent {
               dashboardId={dashboardId}
               dashboardTitle={dashboardTitle}
               dashboardInfo={dashboardInfo}
-              dataMask={dataMask}
               saveType={SAVE_TYPE_NEWFILTER}
               layout={layout}
               triggerNode={

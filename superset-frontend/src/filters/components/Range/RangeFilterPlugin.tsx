@@ -144,7 +144,8 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   const [row] = data;
   // @ts-ignore
   const { min, max }: { min: number; max: number } = row;
-  const { groupby, defaultValue, stepSize, logScale, enableSingleValue } = formData;
+  const { groupby, defaultValue, stepSize, logScale, enableSingleValue } =
+    formData;
 
   const enableSingleMinValue = enableSingleValue === SingleValueType.Minimum;
   const enableSingleMaxValue = enableSingleValue === SingleValueType.Maximum;
