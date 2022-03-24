@@ -21,7 +21,6 @@ import PropTypes from 'prop-types';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 import { t, supersetTheme, ThemeProvider } from '@superset-ui/core';
-import { FeatureFlag, isFeatureEnabled } from 'src/featureFlags';
 import throttle from 'lodash/throttle';
 import ToastContainer from 'src/components/MessageToasts/ToastContainer';
 import {
@@ -32,7 +31,6 @@ import {
 import * as Actions from 'src/SqlLab/actions/sqlLab';
 import TabbedSqlEditors from '../TabbedSqlEditors';
 import QueryAutoRefresh from '../QueryAutoRefresh';
-import QuerySearch from '../QuerySearch';
 
 class App extends React.PureComponent {
   constructor(props) {
@@ -83,40 +81,27 @@ class App extends React.PureComponent {
     this.props.actions.addDangerToast(
       t(
         "SQL Lab uses your browser's local storage to store queries and results." +
-          `\n Currently, you are using ${currentUsage.toFixed(
-            2,
-          )} KB out of ${LOCALSTORAGE_MAX_USAGE_KB} KB. storage space.` +
-          '\n To keep SQL Lab from crashing, please delete some query tabs.' +
-          '\n You can re-access these queries by using the Save feature before you delete the tab. ' +
-          'Note that you will need to close other SQL Lab windows before you do this.',
+          '\nCurrently, you are using %(currentUsage)s KB out of %(maxStorage)d KB storage space.' +
+          '\nTo keep SQL Lab from crashing, please delete some query tabs.' +
+          '\nYou can re-access these queries by using the Save feature before you delete the tab.' +
+          '\nNote that you will need to close other SQL Lab windows before you do this.',
+        {
+          currentUsage: currentUsage.toFixed(2),
+          maxStorage: LOCALSTORAGE_MAX_USAGE_KB,
+        },
       ),
     );
   }
 
   render() {
-    let content;
     if (this.state.hash && this.state.hash === '#search') {
-      if (isFeatureEnabled(FeatureFlag.ENABLE_REACT_CRUD_VIEWS)) {
-        return window.location.replace('/superset/sqllab/history/');
-      }
-      content = (
-        <QuerySearch
-          actions={this.props.actions}
-          displayLimit={this.props.common.conf.DISPLAY_MAX_ROW}
-        />
-      );
-    } else {
-      content = (
-        <>
-          <QueryAutoRefresh />
-          <TabbedSqlEditors />
-        </>
-      );
+      return window.location.replace('/superset/sqllab/history/');
     }
     return (
       <ThemeProvider theme={supersetTheme}>
         <div className="App SqlLab">
-          {content}
+          <QueryAutoRefresh />
+          <TabbedSqlEditors />
           <ToastContainer />
         </div>
       </ThemeProvider>

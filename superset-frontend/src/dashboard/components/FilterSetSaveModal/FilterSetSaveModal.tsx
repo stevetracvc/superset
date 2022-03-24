@@ -17,7 +17,7 @@
  * under the License.
  */
 import React from 'react';
-import { Input, TextArea } from 'src/common/components';
+import { Input, TextArea } from 'src/components/Input';
 import { FormItem } from 'src/components/Form';
 import Button from 'src/components/Button';
 import Tabs from 'src/components/Tabs';
@@ -40,7 +40,7 @@ import ModalTrigger from 'src/components/ModalTrigger';
 
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
 import withToasts from 'src/components/MessageToasts/withToasts';
-import { DataMaskStateWithId } from 'src/dataMask/types';
+import { DataMaskStateWithId } from '@superset-ui/core';
 
 import getDashboardUrl from 'src/dashboard/util/getDashboardUrl';
 import {
@@ -374,7 +374,7 @@ class FilterSetSaveModal extends React.PureComponent<
     );
 
     const url = getDashboardUrl({
-      dataMask: this.props.dataMask,
+      // dataMask: this.props.dataMask,
       pathname: window.location.pathname,
       filters: finalFilters,
       hash: window.location.hash,

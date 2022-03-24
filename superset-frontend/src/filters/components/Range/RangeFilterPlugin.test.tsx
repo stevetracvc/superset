@@ -20,7 +20,12 @@ import { AppSection, GenericDataType } from '@superset-ui/core';
 import React from 'react';
 import { render } from 'spec/helpers/testing-library';
 import RangeFilterPlugin from './RangeFilterPlugin';
+import { SingleValueType } from './SingleValueType';
 import transformProps from './transformProps';
+import {
+  PluginFilterRangeScalingFunctions,
+  SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION,
+} from './types';
 
 const rangeProps = {
   formData: {
@@ -61,6 +66,7 @@ const rangeProps = {
     urlParams: {},
     vizType: 'filter_range',
     inputRef: { current: null },
+    scaling: PluginFilterRangeScalingFunctions.LINEAR,
   },
   height: 20,
   hooks: {},
@@ -83,7 +89,7 @@ const rangeProps = {
 
 describe('RangeFilterPlugin', () => {
   const setDataMask = jest.fn();
-  const getWrapper = (props = {}) =>
+  const getWrapper = (props = {}, filterState = {}) =>
     render(
       // @ts-ignore
       <RangeFilterPlugin
@@ -91,6 +97,7 @@ describe('RangeFilterPlugin', () => {
         {...transformProps({
           ...rangeProps,
           formData: { ...rangeProps.formData, ...props },
+          filterState,
         })}
         setDataMask={setDataMask}
       />,
@@ -100,8 +107,67 @@ describe('RangeFilterPlugin', () => {
     jest.clearAllMocks();
   });
 
-  it('should call setDataMask with correct filter', () => {
-    getWrapper();
+  Object.keys(PluginFilterRangeScalingFunctions).forEach(scaling => {
+    it(`should call setDataMask with correct filter (using ${scaling})`, () => {
+      getWrapper(
+        { scaling },
+        {
+          value: [
+            SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION[scaling].transformScale(
+              10,
+            ),
+            SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION[scaling].transformScale(
+              70,
+            ),
+          ],
+        },
+      );
+      expect(setDataMask).toHaveBeenCalledWith({
+        extraFormData: {
+          filters: [
+            {
+              col: 'SP_POP_TOTL',
+              op: '<=',
+              val: 70,
+            },
+          ],
+        },
+        filterState: {
+          label: 'x ≤ 70',
+          value: [
+            SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION[scaling].transformScale(
+              10,
+            ),
+            SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION[scaling].transformScale(
+              70,
+            ),
+          ],
+        },
+      });
+    });
+  });
+
+  it('should call setDataMask with correct greater than filter', () => {
+    getWrapper({ enableSingleValue: SingleValueType.Minimum });
+    expect(setDataMask).toHaveBeenCalledWith({
+      extraFormData: {
+        filters: [
+          {
+            col: 'SP_POP_TOTL',
+            op: '>=',
+            val: 70,
+          },
+        ],
+      },
+      filterState: {
+        label: 'x ≥ 70',
+        value: [70, 100],
+      },
+    });
+  });
+
+  it('should call setDataMask with correct less than filter', () => {
+    getWrapper({ enableSingleValue: SingleValueType.Maximum });
     expect(setDataMask).toHaveBeenCalledWith({
       extraFormData: {
         filters: [
@@ -115,6 +181,25 @@ describe('RangeFilterPlugin', () => {
       filterState: {
         label: 'x ≤ 70',
         value: [10, 70],
+      },
+    });
+  });
+
+  it('should call setDataMask with correct exact filter', () => {
+    getWrapper({ enableSingleValue: SingleValueType.Exact });
+    expect(setDataMask).toHaveBeenCalledWith({
+      extraFormData: {
+        filters: [
+          {
+            col: 'SP_POP_TOTL',
+            op: '==',
+            val: 10,
+          },
+        ],
+      },
+      filterState: {
+        label: 'x = 10',
+        value: [10, 10],
       },
     });
   });

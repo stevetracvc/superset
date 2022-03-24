@@ -22,6 +22,8 @@ import {
   sections,
   sharedControls,
 } from '@superset-ui/chart-controls';
+import { SingleValueType } from './SingleValueType';
+import { SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION } from './types';
 
 const config: ControlPanelConfig = {
   controlPanelSections: [
@@ -51,26 +53,43 @@ const config: ControlPanelConfig = {
             name: 'enableEmptyFilter',
             config: {
               type: 'CheckboxControl',
-              label: t('Required'),
+              label: t('Filter value is required'),
               default: false,
               renderTrigger: true,
-              description: t('User must select a value for this filter.'),
+              description: t(
+                'User must select a value before applying the filter',
+              ),
+            },
+          },
+          {
+            name: 'enableSingleValue',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Single value'),
+              default: SingleValueType.Exact,
+              renderTrigger: true,
+              description: t('Use only a single value.'),
             },
           },
         ],
         [
           {
-            name: 'logScale',
+            name: 'scaling',
             config: {
-              type: 'CheckboxControl',
-              label: t('Logarithmic Scale'),
-              default: false,
+              type: 'SelectControl',
+              label: t('Scaling Function'),
+              default: SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION.LINEAR,
               renderTrigger: true,
-              description: t('Make the scale logarithmic.'),
+              freeForm: false,
+              choices: Object.keys(
+                SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION,
+              ).map(key => [
+                key,
+                SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION[key].display,
+              ]),
+              description: t('Choose a scaling function for the slider.'),
             },
           },
-        ],
-        [
           {
             name: 'stepSize',
             config: {
@@ -80,6 +99,7 @@ const config: ControlPanelConfig = {
               renderTrigger: true,
               freeForm: true,
               choices: [
+                [0.001, 0.001],
                 [0.01, 0.01],
                 [0.1, 0.1],
                 [1, 1],
