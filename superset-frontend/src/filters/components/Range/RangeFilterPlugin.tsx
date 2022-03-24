@@ -27,7 +27,14 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AntdSlider } from 'src/components';
 import { rgba } from 'emotion-rgba';
-import { PluginFilterRangeProps } from './types';
+
+// could add in scalePow and others
+// import { scaleLog, scaleLinear } from 'd3-scale';
+import {
+  PluginFilterRangeProps,
+  SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION,
+} from './types';
+
 import { StatusMessage, StyledFormItem, FilterPluginStyle } from '../common';
 import { getRangeExtraFormData } from '../../utils';
 import { SingleValueType } from './SingleValueType';
@@ -144,7 +151,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   const [row] = data;
   // @ts-ignore
   const { min, max }: { min: number; max: number } = row;
-  const { groupby, defaultValue, stepSize, logScale, enableSingleValue } =
+  const { groupby, defaultValue, stepSize, scaling, enableSingleValue } =
     formData;
 
   const enableSingleMinValue = enableSingleValue === SingleValueType.Minimum;
@@ -153,23 +160,26 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
   const rangeValue = enableSingleValue === undefined;
 
   const [col = ''] = ensureIsArray(groupby).map(getColumnLabel);
+  const transformScale = useCallback(
+    SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION[scaling].transformScale,
+    [scaling],
+  );
+  const inverseScale = useCallback(
+    SCALING_FUNCTION_ENUM_TO_SCALING_FUNCTION[scaling].inverseScale,
+    [scaling],
+  );
+
   const [value, setValue] = useState<[number, number]>(
-    defaultValue ?? [min, enableSingleExactValue ? min : max],
+    (defaultValue ?? [min, enableSingleExactValue ? min : max]).map(
+      transformScale,
+    ),
   );
   const [marks, setMarks] = useState<{ [key: number]: string }>({});
   const minIndex = 0;
   const maxIndex = 1;
-
-  // these could be replaced with a property instead, to allow custom transforms
-  const transformScale = useCallback(
-    (val: number | null) =>
-      logScale && val ? (val > 0 ? Math.log10(val) : 0) : val,
-    [logScale],
-  );
-
-  const inverseScale = useCallback(
-    (val: number | null) => (logScale && val ? Math.pow(10, val) : val),
-    [logScale],
+  const minMax = useMemo(
+    () => value ?? [min ?? 0, max].map(transformScale),
+    [max, min, value, transformScale],
   );
 
   const tipFormatter = (value: number) =>
@@ -187,7 +197,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
       }
       return newMarks;
     },
-    [inverseScale],
+    [inverseScale, value],
   );
 
   // value is transformed
@@ -206,15 +216,28 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
         upper: upperRaw < Number(transformScale(max)) ? upperRaw : null,
       };
     },
-    [max, min, transformScale, enableSingleExactValue],
+    [max, min, transformScale, value, enableSingleExactValue],
   );
 
   const handleAfterChange = useCallback(
     (value: [number, number]): void => {
+      let val = value;
+      if (value[0] === min && value[1] === max) {
+        // after a filter value reset, make sure it's a transformed value
+        val = [transformScale(value[0]), transformScale(value[1])];
+      }
+      // antd apparently uses the floor value, not the rounded value...?
+      // which causes issues like log(123) = 2.0899
+      if (val[1] === Math.floor(transformScale(max) / stepSize) * stepSize) {
+        val = [val[0], transformScale(max)];
+      }
+      if (val[0] === Math.floor(transformScale(min) / stepSize) * stepSize) {
+        val = [transformScale(min), val[1]];
+      }
       // value is transformed
-      setValue(value);
+      setValue(val);
       // lower & upper are transformed
-      const { lower, upper } = getBounds(value);
+      const { lower, upper } = getBounds(val);
       setMarks(getMarks(lower, upper));
       // removed Number
       setDataMask({
@@ -229,7 +252,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
         },
       });
     },
-    [col, getBounds, setDataMask, getMarks, inverseScale],
+    [col, getBounds, setDataMask, getMarks, inverseScale, transformScale],
   );
 
   // value is transformed
@@ -244,7 +267,7 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
       return;
     }
 
-    let filterStateValue = filterState.value ?? [min, max];
+    let filterStateValue = filterState.value ?? [min, max].map(transformScale);
     if (enableSingleMaxValue) {
       const filterStateMax =
         filterStateValue[maxIndex] <= minMax[maxIndex]
