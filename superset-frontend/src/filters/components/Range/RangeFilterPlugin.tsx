@@ -312,10 +312,6 @@ export default function RangeFilterPlugin(props: PluginFilterRangeProps) {
     return undefined;
   }, [filterState.validateMessage, filterState.validateStatus]);
 
-  const minMax = useMemo(
-    () => value ?? [transformScale(min) ?? 0, transformScale(max)],
-    [max, min, value, transformScale],
-  );
   useEffect(() => {
     if (enableSingleMaxValue) {
       handleAfterChange([min, minMax[minIndex]]);
