@@ -188,6 +188,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     filters,
     sticky = true, // whether to use sticky header
     columnColorFormatters,
+    numberRows = false,
   } = props;
   const timestampFormatter = useCallback(
     value => getTimeFormatterForGranularity(timeGrain)(value),
@@ -469,10 +470,19 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     ],
   );
 
-  const columns = useMemo(
-    () => columnsMeta.map(getColumnConfigs),
-    [columnsMeta, getColumnConfigs],
-  );
+  const columns = useMemo(() => {
+    const cols = columnsMeta.map(getColumnConfigs);
+    if (numberRows) {
+      cols.unshift({
+        id: 'react_table_row_number_column',
+        Header: <th>#</th>,
+        width: 50,
+        disableGlobalFilter: true,
+        disableSortBy: true,
+      });
+    }
+    return cols;
+  }, [columnsMeta, getColumnConfigs, numberRows]);
 
   const handleServerPaginationChange = (
     pageNumber: number,
@@ -495,6 +505,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         height={height}
         serverPagination={serverPagination}
         onServerPaginationChange={handleServerPaginationChange}
+        numberRows={numberRows}
         // 9 page items in > 340px works well even for 100+ pages
         maxPageItemCount={width > 340 ? 9 : 7}
         noResults={(filter: string) =>

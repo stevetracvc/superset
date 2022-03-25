@@ -447,6 +447,18 @@ const config: ControlPanelConfig = {
         ],
         [
           {
+            name: 'number_rows',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Number Rows'),
+              renderTrigger: true,
+              default: false,
+              description: t('Add an extra column to number each row.'),
+            },
+          },
+        ],
+        [
+          {
             name: 'column_config',
             config: {
               type: 'ColumnConfigControl',
