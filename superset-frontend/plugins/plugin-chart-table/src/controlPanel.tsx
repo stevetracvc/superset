@@ -447,6 +447,7 @@ const config: ControlPanelConfig = {
         ],
         [
           {
+<<<<<<< HEAD
             name: 'rearrange_columns',
             config: {
               type: 'CheckboxControl',
@@ -456,6 +457,15 @@ const config: ControlPanelConfig = {
               description: t(
                 'Allow the end user to drag-and-drop the column headers to rearrange them.',
               ),
+=======
+            name: 'number_rows',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Number Rows'),
+              renderTrigger: true,
+              default: false,
+              description: t('Add an extra column to number each row.'),
+>>>>>>> feat/table-number-rows
             },
           },
         ],
