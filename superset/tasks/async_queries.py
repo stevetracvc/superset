@@ -14,14 +14,17 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+from __future__ import annotations
 
 import copy
 import logging
-from typing import Any, cast, Dict, Optional
+from typing import Any, cast, Dict, Optional, TYPE_CHECKING
 
 from celery.exceptions import SoftTimeLimitExceeded
 from flask import current_app, g
+from marshmallow import ValidationError
 
+from superset.charts.schemas import ChartDataQueryContextSchema
 from superset.exceptions import SupersetVizException
 from superset.extensions import (
     async_query_manager,
@@ -32,6 +35,9 @@ from superset.extensions import (
 from superset.utils.cache import generate_cache_key, set_and_log_cache
 from superset.views.utils import get_datasource_info, get_viz
 
+if TYPE_CHECKING:
+    from superset.common.query_context import QueryContext
+
 logger = logging.getLogger(__name__)
 query_timeout = current_app.config[
     "SQLLAB_ASYNC_TIME_LIMIT_SEC"
@@ -41,13 +47,26 @@ query_timeout = current_app.config[
 def ensure_user_is_set(user_id: Optional[int]) -> None:
     user_is_not_set = not (hasattr(g, "user") and g.user is not None)
     if user_is_not_set and user_id is not None:
-        g.user = security_manager.get_user_by_id(user_id)
+        g.user = security_manager.get_user_by_id(  # pylint: disable=assigning-non-slot
+            user_id
+        )
     elif user_is_not_set:
-        g.user = security_manager.get_anonymous_user()
+        g.user = (  # pylint: disable=assigning-non-slot
+            security_manager.get_anonymous_user()
+        )
 
 
 def set_form_data(form_data: Dict[str, Any]) -> None:
-    g.form_data = form_data
+    g.form_data = form_data  # pylint: disable=assigning-non-slot
+
+
+def _create_query_context_from_form(form_data: Dict[str, Any]) -> QueryContext:
+    try:
+        return ChartDataQueryContextSchema().load(form_data)
+    except KeyError as ex:
+        raise ValidationError("Request is incorrect") from ex
+    except ValidationError as error:
+        raise error
 
 
 @celery_app.task(name="load_chart_data_into_cache", soft_time_limit=query_timeout)
@@ -55,13 +74,13 @@ def load_chart_data_into_cache(
     job_metadata: Dict[str, Any], form_data: Dict[str, Any],
 ) -> None:
     # pylint: disable=import-outside-toplevel
-    from superset.charts.data.commands import ChartDataCommand
+    from superset.charts.data.commands.get_data_command import ChartDataCommand
 
     try:
         ensure_user_is_set(job_metadata.get("user_id"))
         set_form_data(form_data)
-        command = ChartDataCommand()
-        command.set_query_context(form_data)
+        query_context = _create_query_context_from_form(form_data)
+        command = ChartDataCommand(query_context)
         result = command.run(cache=True)
         cache_key = result["cache_key"]
         result_url = f"/api/v1/chart/data/{cache_key}"

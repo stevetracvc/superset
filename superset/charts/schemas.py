@@ -15,7 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 # pylint: disable=too-many-lines
-from typing import Any, Dict
+from __future__ import annotations
+
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from flask_babel import gettext as _
 from marshmallow import EXCLUDE, fields, post_load, Schema, validate
@@ -24,7 +26,6 @@ from marshmallow_enum import EnumField
 
 from superset import app
 from superset.common.chart_data import ChartDataResultFormat, ChartDataResultType
-from superset.common.query_context import QueryContext
 from superset.db_engine_specs.base import builtin_time_grains
 from superset.utils import schema as utils
 from superset.utils.core import (
@@ -32,8 +33,11 @@ from superset.utils.core import (
     FilterOperator,
     PostProcessingBoxplotWhiskerType,
     PostProcessingContributionOrientation,
-    TimeRangeEndpoint,
 )
+
+if TYPE_CHECKING:
+    from superset.common.query_context import QueryContext
+    from superset.common.query_context_factory import QueryContextFactory
 
 config = app.config
 
@@ -113,6 +117,8 @@ form_data_description = (
 )
 description_markeddown_description = "Sanitized HTML version of the chart description."
 owners_name_description = "Name of an owner of the chart."
+certified_by_description = "Person or group that has certified this chart"
+certification_details_description = "Details of the certification"
 
 #
 # OpenAPI method specification overrides
@@ -156,6 +162,8 @@ class ChartEntityResponseSchema(Schema):
     )
     form_data = fields.Dict(description=form_data_description)
     slice_url = fields.String(description=slice_url_description)
+    certified_by = fields.String(description=certified_by_description)
+    certification_details = fields.String(description=certification_details_description)
 
 
 class ChartPostSchema(Schema):
@@ -197,6 +205,12 @@ class ChartPostSchema(Schema):
         description=datasource_name_description, allow_none=True
     )
     dashboards = fields.List(fields.Integer(description=dashboards_description))
+    certified_by = fields.String(description=certified_by_description, allow_none=True)
+    certification_details = fields.String(
+        description=certification_details_description, allow_none=True
+    )
+    is_managed_externally = fields.Boolean(allow_none=True, default=False)
+    external_url = fields.String(allow_none=True)
 
 
 class ChartPutSchema(Schema):
@@ -234,6 +248,12 @@ class ChartPutSchema(Schema):
         allow_none=True,
     )
     dashboards = fields.List(fields.Integer(description=dashboards_description))
+    certified_by = fields.String(description=certified_by_description, allow_none=True)
+    certification_details = fields.String(
+        description=certification_details_description, allow_none=True
+    )
+    is_managed_externally = fields.Boolean(allow_none=True, default=False)
+    external_url = fields.String(allow_none=True)
 
 
 class ChartGetDatasourceObjectDataResponseSchema(Schema):
@@ -525,7 +545,7 @@ class ChartDataProphetOptionsSchema(ChartDataPostProcessingOperationOptionsSchem
     )
     periods = fields.Integer(
         descrption="Time periods (in units of `time_grain`) to predict into the future",
-        min=1,
+        min=0,
         example=7,
         required=True,
     )
@@ -581,7 +601,10 @@ class ChartDataBoxplotOptionsSchema(ChartDataPostProcessingOperationOptionsSchem
         description="Aggregate expressions. Metrics can be passed as both "
         "references to datasource metrics (strings), or ad-hoc metrics"
         "which are defined only within the query object. See "
-        "`ChartDataAdhocMetricSchema` for the structure of ad-hoc metrics.",
+        "`ChartDataAdhocMetricSchema` for the structure of ad-hoc metrics. "
+        "When metrics is undefined or null, the query is executed without a groupby. "
+        "However, when metrics is an array (length >= 0), a groupby clause is added to "
+        "the query.",
         allow_none=True,
     )
 
@@ -748,6 +771,7 @@ class ChartDataPostProcessingOperationSchema(Schema):
                 "diff",
                 "compare",
                 "resample",
+                "flatten",
             )
         ),
         example="aggregate",
@@ -802,7 +826,6 @@ class ChartDataFilterSchema(Schema):
 
 class ChartDataExtrasSchema(Schema):
 
-    time_range_endpoints = fields.List(EnumField(TimeRangeEndpoint, by_value=True))
     relative_start = fields.String(
         description="Start time for relative time deltas. "
         'Default: `config["DEFAULT_RELATIVE_START_TIME"]`',
@@ -887,6 +910,9 @@ class AnnotationLayerSchema(Schema):
         allow_none=True,
     )
     show = fields.Boolean(description="Should the layer be shown", required=True)
+    showLabel = fields.Boolean(
+        description="Should the label always be shown", allow_none=True,
+    )
     showMarkers = fields.Boolean(
         description="Should markers be shown. Only applies to line annotations.",
         required=True,
@@ -1130,6 +1156,7 @@ class ChartDataQueryObjectSchema(Schema):
 
 
 class ChartDataQueryContextSchema(Schema):
+    query_context_factory: Optional[QueryContextFactory] = None
     datasource = fields.Nested(ChartDataDatasourceSchema)
     queries = fields.List(fields.Nested(ChartDataQueryObjectSchema))
     force = fields.Boolean(
@@ -1140,13 +1167,21 @@ class ChartDataQueryContextSchema(Schema):
     result_type = EnumField(ChartDataResultType, by_value=True)
     result_format = EnumField(ChartDataResultFormat, by_value=True)
 
-    # pylint: disable=no-self-use,unused-argument
+    form_data = fields.Raw(allow_none=True, required=False)
+
+    # pylint: disable=unused-argument
     @post_load
     def make_query_context(self, data: Dict[str, Any], **kwargs: Any) -> QueryContext:
-        query_context = QueryContext(**data)
+        query_context = self.get_query_context_factory().create(**data)
         return query_context
 
-    # pylint: enable=no-self-use,unused-argument
+    def get_query_context_factory(self) -> QueryContextFactory:
+        if self.query_context_factory is None:
+            # pylint: disable=import-outside-toplevel
+            from superset.common.query_context_factory import QueryContextFactory
+
+            self.query_context_factory = QueryContextFactory()
+        return self.query_context_factory
 
 
 class AnnotationDataSchema(Schema):
@@ -1212,11 +1247,21 @@ class ChartDataResponseResult(Schema):
         description="Amount of rows in result set", allow_none=False,
     )
     data = fields.List(fields.Dict(), description="A list with results")
+    colnames = fields.List(fields.String(), description="A list of column names")
+    coltypes = fields.List(
+        fields.Integer(), description="A list of generic data types of each column"
+    )
     applied_filters = fields.List(
         fields.Dict(), description="A list with applied filters"
     )
     rejected_filters = fields.List(
         fields.Dict(), description="A list with rejected filters"
+    )
+    from_dttm = fields.Integer(
+        desciption="Start timestamp of time range", required=False, allow_none=True
+    )
+    to_dttm = fields.Integer(
+        desciption="End timestamp of time range", required=False, allow_none=True
     )
 
 
@@ -1260,6 +1305,8 @@ class ImportV1ChartSchema(Schema):
     uuid = fields.UUID(required=True)
     version = fields.String(required=True)
     dataset_uuid = fields.UUID(required=True)
+    is_managed_externally = fields.Boolean(allow_none=True, default=False)
+    external_url = fields.String(allow_none=True)
 
 
 CHART_SCHEMAS = (

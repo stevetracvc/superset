@@ -22,7 +22,7 @@ import PropTypes from 'prop-types';
 import { List } from 'react-virtualized';
 import { createFilter } from 'react-search-input';
 import { t, styled, isFeatureEnabled, FeatureFlag } from '@superset-ui/core';
-import { Input } from 'src/common/components';
+import { Input } from 'src/components/Input';
 import { Select } from 'src/components';
 import Loading from 'src/components/Loading';
 import {
@@ -253,7 +253,7 @@ class SliceAdder extends React.Component {
             value={this.state.sortBy}
             onChange={this.handleSelect}
             options={Object.entries(KEYS_TO_SORT).map(([key, label]) => ({
-              label: `${t('Sort by')} ${label}`,
+              label: t('Sort by %s', label),
               value: key,
             }))}
             placeholder={t('Sort by')}

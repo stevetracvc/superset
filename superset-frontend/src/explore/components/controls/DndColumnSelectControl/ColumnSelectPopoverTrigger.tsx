@@ -17,21 +17,16 @@
  * under the License.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  AdhocColumn,
-  FeatureFlag,
-  isFeatureEnabled,
-  t,
-} from '@superset-ui/core';
+import { AdhocColumn, t } from '@superset-ui/core';
 import {
   ColumnMeta,
   isAdhocColumn,
   isColumnMeta,
 } from '@superset-ui/chart-controls';
-import Popover from 'src/components/Popover';
 import { ExplorePopoverContent } from 'src/explore/components/ExploreContentPopover';
 import ColumnSelectPopover from './ColumnSelectPopover';
 import { DndColumnSelectPopoverTitle } from './DndColumnSelectPopoverTitle';
+import ControlPopover from '../ControlPopover/ControlPopover';
 
 interface ColumnSelectPopoverTriggerProps {
   columns: ColumnMeta[];
@@ -42,12 +37,11 @@ interface ColumnSelectPopoverTriggerProps {
   togglePopover?: (visible: boolean) => void;
   closePopover?: () => void;
   children: React.ReactNode;
+  isTemporal?: boolean;
 }
 
 const defaultPopoverLabel = t('My column');
 const editableTitleTab = 'sqlExpression';
-
-const isAdhocColumnsEnabled = isFeatureEnabled(FeatureFlag.UX_BETA);
 
 const ColumnSelectPopoverTrigger = ({
   columns,
@@ -55,6 +49,7 @@ const ColumnSelectPopoverTrigger = ({
   onColumnEdit,
   isControlledComponent,
   children,
+  isTemporal,
   ...props
 }: ColumnSelectPopoverTriggerProps) => {
   const [popoverLabel, setPopoverLabel] = useState(defaultPopoverLabel);
@@ -81,21 +76,18 @@ const ColumnSelectPopoverTrigger = ({
     setPopoverVisible(false);
   }, []);
 
-  const {
-    visible,
-    handleTogglePopover,
-    handleClosePopover,
-  } = isControlledComponent
-    ? {
-        visible: props.visible,
-        handleTogglePopover: props.togglePopover!,
-        handleClosePopover: props.closePopover!,
-      }
-    : {
-        visible: popoverVisible,
-        handleTogglePopover: togglePopover,
-        handleClosePopover: closePopover,
-      };
+  const { visible, handleTogglePopover, handleClosePopover } =
+    isControlledComponent
+      ? {
+          visible: props.visible,
+          handleTogglePopover: props.togglePopover!,
+          handleClosePopover: props.closePopover!,
+        }
+      : {
+          visible: popoverVisible,
+          handleTogglePopover: togglePopover,
+          handleClosePopover: closePopover,
+        };
 
   const getCurrentTab = useCallback((tab: string) => {
     setIsTitleEditDisabled(tab !== editableTitleTab);
@@ -112,7 +104,7 @@ const ColumnSelectPopoverTrigger = ({
           label={popoverLabel}
           setLabel={setPopoverLabel}
           getCurrentTab={getCurrentTab}
-          isAdhocColumnsEnabled={isAdhocColumnsEnabled}
+          isTemporal={isTemporal}
         />
       </ExplorePopoverContent>
     ),
@@ -121,6 +113,7 @@ const ColumnSelectPopoverTrigger = ({
       editedColumn,
       getCurrentTab,
       handleClosePopover,
+      isTemporal,
       onColumnEdit,
       popoverLabel,
     ],
@@ -144,18 +137,17 @@ const ColumnSelectPopoverTrigger = ({
   );
 
   return (
-    <Popover
-      placement="right"
+    <ControlPopover
       trigger="click"
       content={overlayContent}
       defaultVisible={visible}
       visible={visible}
       onVisibleChange={handleTogglePopover}
-      title={isAdhocColumnsEnabled && popoverTitle}
+      title={popoverTitle}
       destroyTooltipOnHide
     >
       {children}
-    </Popover>
+    </ControlPopover>
   );
 };
 
