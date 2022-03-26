@@ -112,4 +112,6 @@ export interface TableChartTransformedProps<D extends DataRecord = DataRecord> {
   numberRows?: boolean;
 }
 
+export const REACT_TABLE_ROW_NUMBER_COLUMN_ID = '-1';
+
 export default {};
