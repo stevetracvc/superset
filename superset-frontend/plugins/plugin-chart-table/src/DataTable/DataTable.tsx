@@ -29,6 +29,7 @@ import {
   usePagination,
   useSortBy,
   useGlobalFilter,
+  useColumnOrder,
   PluginHook,
   TableOptions,
   FilterType,
@@ -45,6 +46,7 @@ import SimplePagination from './components/Pagination';
 import useSticky from './hooks/useSticky';
 import { PAGE_SIZE_OPTIONS } from '../consts';
 import { sortAlphanumericCaseInsensitive } from './utils/sortAlphanumericCaseInsensitive';
+import { REACT_TABLE_ROW_NUMBER_COLUMN_ID } from '../types';
 
 export interface DataTableProps<D extends object> extends TableOptions<D> {
   tableClassName?: string;
@@ -63,6 +65,9 @@ export interface DataTableProps<D extends object> extends TableOptions<D> {
   sticky?: boolean;
   rowCount: number;
   wrapperRef?: MutableRefObject<HTMLDivElement>;
+  onColumnOrderChange: () => void;
+  rearrangeColumns: boolean;
+  numberRows: boolean;
 }
 
 export interface RenderHTMLCellProps extends HTMLProps<HTMLTableCellElement> {
@@ -94,12 +99,16 @@ export default function DataTable<D extends object>({
   hooks,
   serverPagination,
   wrapperRef: userWrapperRef,
+  rearrangeColumns,
+  onColumnOrderChange,
+  numberRows,
   ...moreUseTableOptions
 }: DataTableProps<D>): JSX.Element {
   const tableHooks: PluginHook<D>[] = [
     useGlobalFilter,
     useSortBy,
     usePagination,
+    useColumnOrder,
     doSticky ? useSticky : [],
     hooks || [],
   ].flat();
@@ -143,6 +152,7 @@ export default function DataTable<D extends object>({
     paginationRef,
     resultsSize,
     paginationData,
+    numberRows, // this adds a new column
   ]);
 
   const defaultGlobalFilter: FilterType<D> = useCallback(
@@ -171,6 +181,8 @@ export default function DataTable<D extends object>({
     setGlobalFilter,
     setPageSize: setPageSize_,
     wrapStickyTable,
+    setColumnOrder,
+    allColumns,
     state: { pageIndex, pageSize, globalFilter: filterValue, sticky = {} },
   } = useTable<D>(
     {
@@ -210,6 +222,33 @@ export default function DataTable<D extends object>({
 
   const shouldRenderFooter = columns.some(x => !!x.Footer);
 
+  let columnBeingDragged = -1;
+
+  const onDragStart = (e: React.DragEvent) => {
+    const el = e.target as HTMLTableCellElement;
+    columnBeingDragged = allColumns.findIndex(
+      col => col.id === el.dataset.columnName,
+    );
+    e.dataTransfer.setData('text/plain', `${columnBeingDragged}`);
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    const el = e.target as HTMLTableCellElement;
+    const newPosition = allColumns.findIndex(
+      col => col.id === el.dataset.columnName,
+    );
+
+    if (newPosition !== -1) {
+      const currentCols = allColumns.map(c => c.id);
+      const colToBeMoved = currentCols.splice(columnBeingDragged, 1);
+      currentCols.splice(newPosition, 0, colToBeMoved[0]);
+      setColumnOrder(currentCols);
+      // toggle value in TableChart to trigger column width recalc
+      onColumnOrderChange();
+    }
+    e.preventDefault();
+  };
+
   const renderTable = () => (
     <table {...getTableProps({ className: tableClassName })}>
       <thead>
@@ -222,6 +261,8 @@ export default function DataTable<D extends object>({
                 column.render('Header', {
                   key: column.id,
                   ...column.getSortByToggleProps(),
+                  onDragStart,
+                  onDrop,
                 }),
               )}
             </tr>
@@ -230,13 +271,26 @@ export default function DataTable<D extends object>({
       </thead>
       <tbody {...getTableBodyProps()}>
         {page && page.length > 0 ? (
-          page.map(row => {
+          page.map((row, index) => {
             prepareRow(row);
             const { key: rowKey, ...rowProps } = row.getRowProps();
             return (
               <tr key={rowKey || row.id} {...rowProps}>
                 {row.cells.map(cell =>
-                  cell.render('Cell', { key: cell.column.id }),
+                  numberRows &&
+                  cell.column.id == REACT_TABLE_ROW_NUMBER_COLUMN_ID ? (
+                    <td>
+                      <div
+                        style={{
+                          width: cell.column.width,
+                          height: 0.01,
+                        }}
+                      />
+                      {pageIndex * pageSize + index + 1}
+                    </td>
+                  ) : (
+                    cell.render('Cell', { key: cell.column.id })
+                  ),
                 )}
               </tr>
             );

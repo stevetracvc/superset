@@ -71,6 +71,7 @@ export type TableChartFormData = QueryFormData & {
   emit_filter?: boolean;
   time_grain_sqla?: TimeGranularity;
   column_config?: Record<string, ColumnConfig>;
+  rearrange_columns?: boolean;
 };
 
 export interface TableChartProps extends ChartProps {
@@ -109,6 +110,10 @@ export interface TableChartTransformedProps<D extends DataRecord = DataRecord> {
   emitFilter?: boolean;
   onChangeFilter?: ChartProps['hooks']['onAddFilter'];
   columnColorFormatters?: ColorFormatters;
+  rearrangeColumns?: boolean;
+  numberRows?: boolean;
 }
+
+export const REACT_TABLE_ROW_NUMBER_COLUMN_ID = '-1';
 
 export default {};
