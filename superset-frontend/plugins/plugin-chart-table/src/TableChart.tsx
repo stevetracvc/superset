@@ -37,7 +37,11 @@ import {
   tn,
 } from '@superset-ui/core';
 
-import { DataColumnMeta, TableChartTransformedProps } from './types';
+import {
+  DataColumnMeta,
+  TableChartTransformedProps,
+  REACT_TABLE_ROW_NUMBER_COLUMN_ID,
+} from './types';
 import DataTable, {
   DataTableProps,
   SearchInputProps,
@@ -487,7 +491,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     const cols = columnsMeta.map(getColumnConfigs);
     if (numberRows) {
       cols.unshift({
-        id: 'react_table_row_number_column',
+        id: REACT_TABLE_ROW_NUMBER_COLUMN_ID,
         Header: <th>#</th>,
         width: 50,
         disableGlobalFilter: true,
