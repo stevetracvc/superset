@@ -37,11 +37,7 @@ import {
   tn,
 } from '@superset-ui/core';
 
-import {
-  DataColumnMeta,
-  TableChartTransformedProps,
-  REACT_TABLE_ROW_NUMBER_COLUMN_ID,
-} from './types';
+import { DataColumnMeta, TableChartTransformedProps } from './types';
 import DataTable, {
   DataTableProps,
   SearchInputProps,
@@ -51,7 +47,11 @@ import DataTable, {
 
 import Styles from './Styles';
 import { formatColumnValue } from './utils/formatValue';
-import { PAGE_SIZE_OPTIONS } from './consts';
+import {
+  PAGE_SIZE_OPTIONS,
+  REACT_TABLE_ROW_NUMBER_COLUMN_ID,
+  REACT_TABLE_ROW_NUMBER_COLUMN_WIDTH,
+} from './consts';
 import { updateExternalFormData } from './DataTable/utils/externalAPIs';
 
 type ValueRange = [number, number];
@@ -480,7 +480,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       cols.unshift({
         id: REACT_TABLE_ROW_NUMBER_COLUMN_ID,
         Header: <th>#</th>,
-        width: 50,
+        width: REACT_TABLE_ROW_NUMBER_COLUMN_WIDTH,
         disableGlobalFilter: true,
         disableSortBy: true,
       });
