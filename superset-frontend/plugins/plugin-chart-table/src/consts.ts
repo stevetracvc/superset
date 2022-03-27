@@ -30,3 +30,6 @@ export const PAGE_SIZE_OPTIONS = formatSelectOptions<number>([
   100,
   200,
 ]);
+
+export const REACT_TABLE_ROW_NUMBER_COLUMN_WIDTH = 50;
+export const REACT_TABLE_ROW_NUMBER_COLUMN_ID = '-1';

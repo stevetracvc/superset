@@ -44,9 +44,8 @@ import SelectPageSize, {
 } from './components/SelectPageSize';
 import SimplePagination from './components/Pagination';
 import useSticky from './hooks/useSticky';
-import { PAGE_SIZE_OPTIONS } from '../consts';
+import { PAGE_SIZE_OPTIONS, REACT_TABLE_ROW_NUMBER_COLUMN_ID } from '../consts';
 import { sortAlphanumericCaseInsensitive } from './utils/sortAlphanumericCaseInsensitive';
-import { REACT_TABLE_ROW_NUMBER_COLUMN_ID } from '../types';
 
 export interface DataTableProps<D extends object> extends TableOptions<D> {
   tableClassName?: string;
@@ -278,7 +277,7 @@ export default function DataTable<D extends object>({
               <tr key={rowKey || row.id} {...rowProps}>
                 {row.cells.map(cell =>
                   numberRows &&
-                  cell.column.id == REACT_TABLE_ROW_NUMBER_COLUMN_ID ? (
+                  cell.column.id === REACT_TABLE_ROW_NUMBER_COLUMN_ID ? (
                     <td>
                       <div
                         style={{
