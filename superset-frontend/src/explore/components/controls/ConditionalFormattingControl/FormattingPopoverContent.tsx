@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React from 'react';
+import React, { useState } from 'react';
+import { rgb } from 'd3-color';
 import { styled, t } from '@superset-ui/core';
 import { Form, FormItem, FormProps } from 'src/components/Form';
 import Select from 'src/components/Select/Select';
 import { Col, Row } from 'src/components';
 import { InputNumber } from 'src/components/Input';
+import Checkbox from 'src/components/Checkbox';
 import Button from 'src/components/Button';
 import {
   COMPARATOR,
@@ -38,10 +40,18 @@ const JustifyEnd = styled.div`
   justify-content: flex-end;
 `;
 
+const hexToRGBString = (hex: string) => {
+  if (!hex) {
+    return 'rgb(0,0,0)';
+  }
+  const { r, g, b } = rgb(hex);
+  return `rgb(${r},${g},${b})`;
+};
+
 const colorSchemeOptions = [
-  { value: 'rgb(0,255,0)', label: t('green') },
-  { value: 'rgb(255,255,0)', label: t('yellow') },
-  { value: 'rgb(255,0,0)', label: t('red') },
+  { value: hexToRGBString(theme.colors.success.light1), label: t('green') },
+  { value: hexToRGBString(theme.colors.alert.light1), label: t('yellow') },
+  { value: hexToRGBString(theme.colors.error.light1), label: t('red') },
 ];
 
 const operatorOptions = [
@@ -118,7 +128,8 @@ const shouldFormItemUpdate = (
   isOperatorNone(prevValues.operator) !==
     isOperatorNone(currentValues.operator) ||
   isOperatorMultiValue(prevValues.operator) !==
-    isOperatorMultiValue(currentValues.operator);
+    isOperatorMultiValue(currentValues.operator) ||
+  prevValues.inverseScale !== currentValues.inverseScale;
 
 const operatorField = (
   <FormItem
@@ -131,54 +142,6 @@ const operatorField = (
   </FormItem>
 );
 
-const renderOperatorFields = ({ getFieldValue }: GetFieldValue) =>
-  isOperatorNone(getFieldValue('operator')) ? (
-    <Row gutter={12}>
-      <Col span={6}>{operatorField}</Col>
-    </Row>
-  ) : isOperatorMultiValue(getFieldValue('operator')) ? (
-    <Row gutter={12}>
-      <Col span={9}>
-        <FormItem
-          name="targetValueLeft"
-          label={t('Left value')}
-          rules={rulesTargetValueLeft}
-          dependencies={targetValueLeftDeps}
-          validateTrigger="onBlur"
-          trigger="onBlur"
-        >
-          <FullWidthInputNumber />
-        </FormItem>
-      </Col>
-      <Col span={6}>{operatorField}</Col>
-      <Col span={9}>
-        <FormItem
-          name="targetValueRight"
-          label={t('Right value')}
-          rules={rulesTargetValueRight}
-          dependencies={targetValueRightDeps}
-          validateTrigger="onBlur"
-          trigger="onBlur"
-        >
-          <FullWidthInputNumber />
-        </FormItem>
-      </Col>
-    </Row>
-  ) : (
-    <Row gutter={12}>
-      <Col span={6}>{operatorField}</Col>
-      <Col span={18}>
-        <FormItem
-          name="targetValue"
-          label={t('Target value')}
-          rules={rulesRequired}
-        >
-          <FullWidthInputNumber />
-        </FormItem>
-      </Col>
-    </Row>
-  );
-
 export const FormattingPopoverContent = ({
   config,
   onChange,
@@ -187,44 +150,108 @@ export const FormattingPopoverContent = ({
   config?: ConditionalFormattingConfig;
   onChange: (config: ConditionalFormattingConfig) => void;
   columns: { label: string; value: string }[];
-}) => (
-  <Form
-    onFinish={onChange}
-    initialValues={config}
-    requiredMark="optional"
-    layout="vertical"
-  >
-    <Row gutter={12}>
-      <Col span={12}>
-        <FormItem
-          name="column"
-          label={t('Column')}
-          rules={rulesRequired}
-          initialValue={columns[0]?.value}
-        >
-          <Select ariaLabel={t('Select column')} options={columns} />
-        </FormItem>
-      </Col>
-      <Col span={12}>
-        <FormItem
-          name="colorScheme"
-          label={t('Color scheme')}
-          rules={rulesRequired}
-          initialValue={colorSchemeOptions[0].value}
-        >
-          <Select ariaLabel={t('Color scheme')} options={colorSchemeOptions} />
-        </FormItem>
-      </Col>
-    </Row>
-    <FormItem noStyle shouldUpdate={shouldFormItemUpdate}>
-      {renderOperatorFields}
-    </FormItem>
-    <FormItem>
-      <JustifyEnd>
-        <Button htmlType="submit" buttonStyle="primary">
-          {t('Apply')}
-        </Button>
-      </JustifyEnd>
-    </FormItem>
-  </Form>
-);
+}) => {
+  const [inverseScale, setInverseScale] = useState(
+    config?.inverseScale || false,
+  );
+
+  const changeInverseScale = () => {
+    setInverseScale(!inverseScale);
+  };
+
+  const renderOperatorFields = ({ getFieldValue }: GetFieldValue) => (
+    <>
+      {isOperatorNone(getFieldValue('operator')) ? (
+        <Row gutter={12}>
+          <Col span={6}>{operatorField}</Col>
+        </Row>
+      ) : isOperatorMultiValue(getFieldValue('operator')) ? (
+        <Row gutter={12}>
+          <Col span={9}>
+            <FormItem
+              name="targetValueLeft"
+              label={t('Left value')}
+              rules={rulesTargetValueLeft}
+              dependencies={targetValueLeftDeps}
+              validateTrigger="onBlur"
+              trigger="onBlur"
+            >
+              <FullWidthInputNumber />
+            </FormItem>
+          </Col>
+          <Col span={6}>{operatorField}</Col>
+          <Col span={9}>
+            <FormItem
+              name="targetValueRight"
+              label={t('Right value')}
+              rules={rulesTargetValueRight}
+              dependencies={targetValueRightDeps}
+              validateTrigger="onBlur"
+              trigger="onBlur"
+            >
+              <FullWidthInputNumber />
+            </FormItem>
+          </Col>
+        </Row>
+      ) : (
+        <Row gutter={12}>
+          <Col span={6}>{operatorField}</Col>
+          <Col span={18}>
+            <FormItem
+              name="targetValue"
+              label={t('Target value')}
+              rules={rulesRequired}
+            >
+              <FullWidthInputNumber />
+            </FormItem>
+          </Col>
+        </Row>
+      )}
+      <FormItem name="inverseScale" label={t('Inverse Scale')}>
+        <Checkbox checked={inverseScale} onChange={changeInverseScale} />
+      </FormItem>
+    </>
+  );
+
+  return (
+    <Form
+      onFinish={onChange}
+      initialValues={config}
+      requiredMark="optional"
+      layout="vertical"
+    >
+      <Row gutter={12}>
+        <Col span={12}>
+          <FormItem
+            name="column"
+            label={t('Column')}
+            rules={rulesRequired}
+            initialValue={columns[0]?.value}
+          >
+            <Select ariaLabel={t('Select column')} options={columns} />
+          </FormItem>
+        </Col>
+        <Col span={12}>
+          <FormItem
+            name="colorScheme"
+            label={t('Color scheme')}
+            rules={rulesRequired}
+            initialValue={colorSchemeOptions[0].value}
+          >
+            <Select ariaLabel={t('Color scheme')} options={colorSchemeOptions} />
+          </FormItem>
+        </Col>
+      </Row>
+      <FormItem noStyle shouldUpdate={shouldFormItemUpdate}>
+        {renderOperatorFields}
+      </FormItem>
+      <FormItem>
+        <JustifyEnd>
+          <Button htmlType="submit" buttonStyle="primary">
+            {t('Apply')}
+          </Button>
+        </JustifyEnd>
+      </FormItem>
+    </Form>
+  );
+};

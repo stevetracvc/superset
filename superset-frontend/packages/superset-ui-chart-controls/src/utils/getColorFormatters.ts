@@ -57,6 +57,7 @@ export const getColorFunction = (
     targetValueLeft,
     targetValueRight,
     colorScheme,
+    inverseScale,
   }: ConditionalFormattingConfig,
   columnValues: number[],
 ) => {
@@ -173,10 +174,14 @@ export const getColorFunction = (
     const compareResult = comparatorFunction(value, columnValues);
     if (compareResult === false) return undefined;
     const { cutoffValue, extremeValue } = compareResult;
-    return rgbToRgba(
-      colorScheme,
-      getOpacity(value, cutoffValue, extremeValue, minOpacity, maxOpacity),
+    const opacity = getOpacity(
+      value,
+      cutoffValue,
+      extremeValue,
+      minOpacity,
+      maxOpacity,
     );
+    return rgbToRgba(colorScheme, inverseScale ? 1 - opacity : opacity);
   };
 };
 
