@@ -40,18 +40,10 @@ const JustifyEnd = styled.div`
   justify-content: flex-end;
 `;
 
-const hexToRGBString = (hex: string) => {
-  if (!hex) {
-    return 'rgb(0,0,0)';
-  }
-  const { r, g, b } = rgb(hex);
-  return `rgb(${r},${g},${b})`;
-};
-
 const colorSchemeOptions = [
-  { value: hexToRGBString(theme.colors.success.light1), label: t('green') },
-  { value: hexToRGBString(theme.colors.alert.light1), label: t('yellow') },
-  { value: hexToRGBString(theme.colors.error.light1), label: t('red') },
+  { value: 'rgb(0,255,0)', label: t('green') },
+  { value: 'rgb(255,255,0)', label: t('yellow') },
+  { value: 'rgb(255,0,0)', label: t('red') },
 ];
 
 const operatorOptions = [
