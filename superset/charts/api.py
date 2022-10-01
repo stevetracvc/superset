@@ -18,7 +18,7 @@ import json
 import logging
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from zipfile import ZipFile
 
 from flask import g, redirect, request, Response, send_file, url_for
@@ -30,7 +30,7 @@ from marshmallow import ValidationError
 from werkzeug.wrappers import Response as WerkzeugResponse
 from werkzeug.wsgi import FileWrapper
 
-from superset import is_feature_enabled, thumbnail_cache
+from superset import app, is_feature_enabled, thumbnail_cache
 from superset.charts.commands.bulk_delete import BulkDeleteChartCommand
 from superset.charts.commands.create import CreateChartCommand
 from superset.charts.commands.delete import DeleteChartCommand
@@ -82,6 +82,7 @@ from superset.views.base_api import (
 from superset.views.filters import FilterRelatedOwners
 
 logger = logging.getLogger(__name__)
+config = app.config
 
 
 class ChartRestApi(BaseSupersetModelRestApi):
@@ -125,9 +126,11 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "slice_name",
         "viz_type",
         "query_context",
+        "is_managed_externally",
     ]
     show_select_columns = show_columns + ["table.id"]
     list_columns = [
+        "is_managed_externally",
         "certified_by",
         "certification_details",
         "cache_timeout",
@@ -487,46 +490,52 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except ChartBulkDeleteFailedError as ex:
             return self.response_422(message=str(ex))
 
-    # SRM may have been removed
-    def send_chart_response(
-        self, result, form_data = None,
-#        self, result: Dict[Any, Any], form_data: Optional[Dict[str, Any]] = None,
-    ) -> Response:
-        result_type = result["query_context"].result_type
-        result_format = result["query_context"].result_format
-
-        # Post-process the data so it matches the data presented in the chart.
-        # This is needed for sending reports based on text charts that do the
-        # post-processing of data, eg, the pivot table.
-        if result_type == ChartDataResultType.POST_PROCESSED:
-            result = apply_post_process(result, form_data)
-
-        if result_format == ChartDataResultFormat.CSV:
-            # Verify user has permission to export CSV file
-            if not security_manager.can_access("can_csv", "Superset"):
-                return self.response_403()
-
-            # return the first result
-            data = result["queries"][0]["data"]
-            # Load slice_name for a more useful CSV filename
-            slice_id = form_data["slice_id"]
-            from superset import db
-            slices = db.session.query(Slice).filter_by(id=slice_id).all()
-            slice_name = slices[0]
-            now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-            return CsvResponse(data, headers=generate_download_headers("csv", f"{slice_name}_{now_str}"))
-
-        if result_format == ChartDataResultFormat.JSON:
-            response_data = simplejson.dumps(
-                {"result": result["queries"]},
-                default=json_int_dttm_ser,
-                ignore_nan=True,
-            )
-            resp = make_response(response_data, 200)
-            resp.headers["Content-Type"] = "application/json; charset=utf-8"
-            return resp
-
-        return self.response_400(message=f"Unsupported result_format: {result_format}")
+    # # SRM may have been removed
+    # def send_chart_response(
+    #     self,
+    #     result: Dict[Any, Any],
+    #     form_data: Optional[Dict[str, Any]] = None,
+    #     #        self, result: Dict[Any, Any], form_data: Optional[Dict[str, Any]] = None,
+    # ) -> Response:
+    #     result_type = result["query_context"].result_type
+    #     result_format = result["query_context"].result_format
+    #
+    #     # Post-process the data so it matches the data presented in the chart.
+    #     # This is needed for sending reports based on text charts that do the
+    #     # post-processing of data, eg, the pivot table.
+    #     if result_type == ChartDataResultType.POST_PROCESSED:
+    #         result = apply_post_process(result, form_data)
+    #
+    #     if result_format == ChartDataResultFormat.CSV:
+    #         # Verify user has permission to export CSV file
+    #         if not security_manager.can_access("can_csv", "Superset"):
+    #             return self.response_403()
+    #
+    #         # return the first result
+    #         data = result["queries"][0]["data"]
+    #         # Load slice_name for a more useful CSV filename
+    #         slice_id = form_data["slice_id"]
+    #         from superset import db
+    #
+    #         slices = db.session.query(Slice).filter_by(id=slice_id).all()
+    #         slice_name = slices[0]
+    #         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    #         return CsvResponse(
+    #             data,
+    #             headers=generate_download_headers("csv", f"{slice_name}_{now_str}"),
+    #         )
+    #
+    #     if result_format == ChartDataResultFormat.JSON:
+    #         response_data = simplejson.dumps(
+    #             {"result": result["queries"]},
+    #             default=json_int_dttm_ser,
+    #             ignore_nan=True,
+    #         )
+    #         resp = make_response(response_data, 200)
+    #         resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    #         return resp
+    #
+    #     return self.response_400(message=f"Unsupported result_format: {result_format}")
 
     @expose("/<pk>/cache_screenshot/", methods=["GET"])
     @protect()
@@ -555,14 +564,12 @@ class ChartRestApi(BaseSupersetModelRestApi):
                 schema:
                   $ref: '#/components/schemas/screenshot_query_schema'
           responses:
-            200:
+            202:
               description: Chart async result
               content:
                 application/json:
                   schema:
                     $ref: "#/components/schemas/ChartCacheScreenshotResponseSchema"
-            302:
-              description: Redirects to the current digest
             400:
               $ref: '#/components/responses/400'
             401:
@@ -635,8 +642,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
                  schema:
                    type: string
                    format: binary
-            302:
-              description: Redirects to the current digest
             400:
               $ref: '#/components/responses/400'
             401:

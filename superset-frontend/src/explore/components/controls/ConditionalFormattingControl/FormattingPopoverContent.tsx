@@ -18,7 +18,7 @@
  */
 import React, { useState } from 'react';
 import { rgb } from 'd3-color';
-import { styled, t } from '@superset-ui/core';
+import { styled, SupersetTheme, t, useTheme } from '@superset-ui/core';
 import { Form, FormItem, FormProps } from 'src/components/Form';
 import Select from 'src/components/Select/Select';
 import { Col, Row } from 'src/components';
@@ -40,10 +40,10 @@ const JustifyEnd = styled.div`
   justify-content: flex-end;
 `;
 
-const colorSchemeOptions = [
-  { value: 'rgb(0,255,0)', label: t('green') },
-  { value: 'rgb(255,255,0)', label: t('yellow') },
-  { value: 'rgb(255,0,0)', label: t('red') },
+const colorSchemeOptions = (theme: SupersetTheme) => [
+  { value: theme.colors.success.light1, label: t('green') },
+  { value: theme.colors.alert.light1, label: t('yellow') },
+  { value: theme.colors.error.light1, label: t('red') },
 ];
 
 const operatorOptions = [
@@ -205,6 +205,8 @@ export const FormattingPopoverContent = ({
     </>
   );
 
+  const theme = useTheme();
+  const colorScheme = colorSchemeOptions(theme);
   return (
     <Form
       onFinish={onChange}
@@ -228,9 +230,9 @@ export const FormattingPopoverContent = ({
             name="colorScheme"
             label={t('Color scheme')}
             rules={rulesRequired}
-            initialValue={colorSchemeOptions[0].value}
+            initialValue={colorScheme[0].value}
           >
-            <Select ariaLabel={t('Color scheme')} options={colorSchemeOptions} />
+            <Select ariaLabel={t('Color scheme')} options={colorScheme} />
           </FormItem>
         </Col>
       </Row>

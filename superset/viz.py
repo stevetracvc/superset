@@ -682,8 +682,11 @@ class BaseViz:  # pylint: disable=too-many-public-methods
         security_manager.raise_for_access(viz=self)
 
 
+from markdown import markdown
+
 from superset.jinja_context import get_template_processor
-import markdown
+
+
 class MarkupViz(BaseViz):
 
     """Use html or markdown with Jinja and queries to create a free form widget"""
@@ -731,7 +734,8 @@ class MarkupViz(BaseViz):
         if self.query_mode == QueryMode.RAW:
             columns = utils.get_metric_names(fd.get("all_columns") or [])
         else:
-            columns = utils.get_metric_names(self.groupby + (fd.get("metrics") or []))
+            columns = utils.get_metric_names(fd.get("groupby") or [])
+            columns += utils.get_metric_names(fd.get("metrics") or [])
             percent_columns = utils.get_metric_names(fd.get("percent_metrics") or [])
 
         self.columns = columns
@@ -777,13 +781,13 @@ class MarkupViz(BaseViz):
                 d["orderby"] = [(first_metric, not fd.get("order_desc", True))]
         return d
 
-#    def query_obj(self):
-#        return None
+    #    def query_obj(self):
+    #        return None
 
-#    def get_df(self, query_obj=None):
-#        return None
+    #    def get_df(self, query_obj=None):
+    #        return None
 
-    def get_code(self, df):
+    def get_code(self, df: pd.DataFrame) -> str:
         code = self.form_data.get("code", "")
         logger.warning(f"XXXXXXXXXXXXXXXXXXXXXXXX: {code}")
         logger.warning(f"XXXXXXXXXXXXXXXXXXXXXXXX: {df}")
@@ -792,13 +796,13 @@ class MarkupViz(BaseViz):
         logger.warning(f"XXXXXXXXXXXXXXXXXXXXXXXX: {ret}")
         return ret
 
-    def get_data(self, df):
+    def get_data(self, df: pd.DataFrame) -> VizData:  # pylint: disable=no-self-use
         columns, percent_columns = self.columns, self.percent_columns
         if DTTM_ALIAS in df and self.is_timeseries:
             columns = [DTTM_ALIAS] + columns
         df = pd.concat(
             [
-                df[columns],  
+                df[columns],
                 (df[percent_columns].div(df[percent_columns].sum()).add_prefix("%")),
             ],
             axis=1,
@@ -806,13 +810,17 @@ class MarkupViz(BaseViz):
         markup_type = self.form_data.get("markup_type")
         code = self.get_code(df)
         if markup_type == "markdown":
-            code = markdown(code, extensions=['tables'])
+            code = markdown(code, extensions=["tables"])
             return None
 
-#        return self.handle_js_int_overflow( 
-#            dict(html=code, records=df.to_dict(orient="records"), columns=list(df.columns))
-#        )     
-        return dict(html=code, records=df.to_dict(orient="records"), columns=list(df.columns))
+        #        return self.handle_js_int_overflow(
+        #            dict(html=code, records=df.to_dict(orient="records"), columns=list(df.columns))
+        #        )
+        return dict(
+            html=code, records=df.to_dict(orient="records"), columns=list(df.columns)
+        )
+
+
 #        return dict(html=code)
 
 
@@ -1220,7 +1228,7 @@ class CalHeatmapViz(BaseViz):
                 v = query_obj[DTTM_ALIAS]
                 if hasattr(v, "value"):
                     v = v.value
-                values[str(v / 10 ** 9)] = query_obj.get(metric)
+                values[str(v / 10**9)] = query_obj.get(metric)
             data[metric] = values
 
         try:
@@ -2079,7 +2087,12 @@ class SankeyViz(BaseViz):
         source, target = get_column_names(self.groupby)
         (value,) = self.metric_labels
         df.rename(
-            columns={source: "source", target: "target", value: "value",}, inplace=True,
+            columns={
+                source: "source",
+                target: "target",
+                value: "value",
+            },
+            inplace=True,
         )
         df["source"] = df["source"].astype(str)
         df["target"] = df["target"].astype(str)
