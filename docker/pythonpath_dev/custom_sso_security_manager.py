@@ -12,6 +12,10 @@ from flask import redirect
 
 class CustomSsoAuthOAuthView(AuthOAuthView):
 
+    @expose("/login/")
+    def login(self, provider="cognito"):
+        return super().login(provider=provider) #, register = None)
+
     @expose("/logout/")
     def logout(self, provider="cognito", register=None):
         provider_obj = self.appbuilder.sm.oauth_remotes[provider]
