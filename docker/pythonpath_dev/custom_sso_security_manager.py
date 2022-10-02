@@ -7,7 +7,7 @@ log = logger
 
 import json
 import time
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from flask import redirect
 from flask_appbuilder.baseviews import expose
@@ -53,7 +53,7 @@ class CustomSsoSecurityManager(SupersetSecurityManager):
 
     def oauth_user_info(
         self, provider: str, response: Optional[WerkzeugResponse] = None
-    ) -> Optional[dict[str, str]]:
+    ) -> Optional[Dict[str, str]]:
         if provider == "cognito":
             res = self.appbuilder.sm.oauth_remotes[provider].get(
                 "oauth2/userInfo"
@@ -89,7 +89,7 @@ class CustomSsoSecurityManager(SupersetSecurityManager):
             }
         return None
 
-    def auth_user_oauth(self, userinfo: dict[str, str]) -> Optional[Any]:
+    def auth_user_oauth(self, userinfo: Dict[str, str]) -> Optional[Any]:
         """
         Method for authenticating user with OAuth.
 

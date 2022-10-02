@@ -1,13 +1,8 @@
 import logging
 import os
 
-from custom_sso_security_manager import CustomSsoSecurityManager
-from flask_appbuilder.security.manager import AUTH_OAUTH
-
-CUSTOM_SECURITY_MANAGER = CustomSsoSecurityManager
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-AUTH_TYPE = AUTH_OAUTH
 # AUTH_USER_REGISTRATION = True
 # AUTH_USER_REGISTRATION_ROLE = "User_company_restricted_access" # "User_general_permissions"
 
@@ -17,17 +12,25 @@ logger = logging.getLogger()
 
 try:
     import superset_config_oauth
+    from custom_sso_security_manager import CustomSsoSecurityManager
+    from flask_appbuilder.security.manager import AUTH_OAUTH
     from superset_config_oauth import (  # noqa
         CLIENT_ID,
         CLIENT_SECRET,
         LOGOUT_REDIRECT_URI,
     )
 
+    CUSTOM_SECURITY_MANAGER = CustomSsoSecurityManager
+    AUTH_TYPE = AUTH_OAUTH
+
     logger.info(
         f"Loaded your OAuth configuration at " f"[{superset_config_oauth.__file__}]"
     )
 except ImportError:
     logger.info("Using default Docker config...")
+    CLIENT_ID = ""
+    CLIENT_SECRET = ""
+    LOGOUT_REDIRECT_URI = ""
 
 
 COGNITO_URL = "https://tracvc.auth.us-west-2.amazoncognito.com/"
@@ -67,6 +70,7 @@ FEATURE_FLAGS = {
     "DYNAMIC_PLUGINS": True,
     "DASHBOARD_RBAC": True,
     #    "ENABLE_REACT_CRUD_VIEWS": True,
+    "DASHBOARD_EDIT_CHART_IN_NEW_TAB": True,
 }
 
 #
