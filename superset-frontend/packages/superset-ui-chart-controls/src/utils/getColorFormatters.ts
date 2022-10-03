@@ -17,7 +17,12 @@
  * under the License.
  */
 import memoizeOne from 'memoize-one';
-import { addAlpha, DataRecord } from '@superset-ui/core';
+import {
+  addAlpha,
+  DataRecord,
+  splitRgbAlpha,
+  toRgbaHex,
+} from '@superset-ui/core';
 import {
   ColorFormatters,
   COMPARATOR,
@@ -37,20 +42,16 @@ export const getOpacity = (
   extremeValue: number,
   minOpacity = MIN_OPACITY_BOUNDED,
   maxOpacity = MAX_OPACITY,
+  inverseScale = false,
 ) => {
-  if (extremeValue === cutoffPoint) {
-    return maxOpacity;
-  }
-  return Math.min(
-    maxOpacity,
-    round(
-      Math.abs(
-        ((maxOpacity - minOpacity) / (extremeValue - cutoffPoint)) *
-          (value - cutoffPoint),
-      ) + minOpacity,
-      2,
-    ),
-  );
+  const opacity =
+    extremeValue === cutoffPoint
+      ? maxOpacity
+      : Math.abs(
+          ((maxOpacity - minOpacity) / (extremeValue - cutoffPoint)) *
+            (value - cutoffPoint),
+        ) + minOpacity;
+  return round(inverseScale ? maxOpacity - opacity + minOpacity : opacity, 2);
 };
 
 export const getColorFunction = (
@@ -65,13 +66,15 @@ export const getColorFunction = (
   columnValues: number[],
 ) => {
   let minOpacity = MIN_OPACITY_BOUNDED;
-  const maxOpacity = MAX_OPACITY;
-
+  // get a max opacity if supplied, can result in slight rounding errors though
+  // also, force to RGbA hex string, color picker still returns {r, g, b, a}
+  const { rgb, alpha: maxOpacity = MAX_OPACITY } =
+    splitRgbAlpha(toRgbaHex(colorScheme)) || {};
   let comparatorFunction: (
     value: number,
     allValues: number[],
   ) => false | { cutoffValue: number; extremeValue: number };
-  if (operator === undefined || colorScheme === undefined) {
+  if (operator === undefined || rgb === undefined) {
     return () => undefined;
   }
   if (
@@ -177,14 +180,17 @@ export const getColorFunction = (
     const compareResult = comparatorFunction(value, columnValues);
     if (compareResult === false) return undefined;
     const { cutoffValue, extremeValue } = compareResult;
-    const opacity = getOpacity(
-      value,
-      cutoffValue,
-      extremeValue,
-      minOpacity,
-      maxOpacity,
+    return addAlpha(
+      rgb,
+      getOpacity(
+        value,
+        cutoffValue,
+        extremeValue,
+        minOpacity,
+        maxOpacity,
+        inverseScale && operator !== COMPARATOR.EQUAL,
+      ),
     );
-    return rgbToRgba(colorScheme, inverseScale ? 1 - opacity : opacity);
   };
 };
 
