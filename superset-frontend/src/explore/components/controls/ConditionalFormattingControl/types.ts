@@ -49,7 +49,7 @@ export type ConditionalFormattingConfig = {
   targetValueRight?: number;
   column?: string;
   colorScheme?: string;
-  invertedScale?: boolean;
+  inverseScale?: boolean;
 };
 
 export type ConditionalFormattingControlProps = ControlComponentProps<

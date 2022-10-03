@@ -57,9 +57,25 @@ class AdhocColumn(TypedDict, total=False):
     sqlExpression: Optional[str]
 
 
+class ResultSetColumnType(TypedDict):
+    """
+    Superset virtual dataset column interface
+    """
+
+    name: str
+    type: Optional[str]
+    is_dttm: bool
+
+
 CacheConfig = Dict[str, Any]
 DbapiDescriptionRow = Tuple[
-    str, str, Optional[str], Optional[str], Optional[int], Optional[int], bool
+    Union[str, bytes],
+    str,
+    Optional[str],
+    Optional[str],
+    Optional[int],
+    Optional[int],
+    bool,
 ]
 DbapiDescription = Union[List[DbapiDescriptionRow], Tuple[DbapiDescriptionRow, ...]]
 DbapiResult = Sequence[Union[List[Any], Tuple[Any, ...]]]

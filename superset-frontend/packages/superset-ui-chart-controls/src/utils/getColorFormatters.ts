@@ -16,7 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { DataRecord } from '@superset-ui/core';
+import memoizeOne from 'memoize-one';
+import {
+  addAlpha,
+  DataRecord,
+  splitRgbAlpha,
+  toRgbaHex,
+} from '@superset-ui/core';
 import {
   ColorFormatters,
   COMPARATOR,
@@ -27,9 +33,6 @@ import {
 export const round = (num: number, precision = 0) =>
   Number(`${Math.round(Number(`${num}e+${precision}`))}e-${precision}`);
 
-export const rgbToRgba = (rgb: string, alpha: number) =>
-  rgb.replace(/rgb/i, 'rgba').replace(/\)/i, `,${alpha})`);
-
 const MIN_OPACITY_BOUNDED = 0.05;
 const MIN_OPACITY_UNBOUNDED = 0;
 const MAX_OPACITY = 1;
@@ -39,16 +42,17 @@ export const getOpacity = (
   extremeValue: number,
   minOpacity = MIN_OPACITY_BOUNDED,
   maxOpacity = MAX_OPACITY,
-) =>
-  extremeValue === cutoffPoint
-    ? maxOpacity
-    : round(
-        Math.abs(
+  inverseScale = false,
+) => {
+  const opacity =
+    extremeValue === cutoffPoint
+      ? maxOpacity
+      : Math.abs(
           ((maxOpacity - minOpacity) / (extremeValue - cutoffPoint)) *
             (value - cutoffPoint),
-        ) + minOpacity,
-        2,
-      );
+        ) + minOpacity;
+  return round(inverseScale ? maxOpacity - opacity + minOpacity : opacity, 2);
+};
 
 export const getColorFunction = (
   {
@@ -62,13 +66,15 @@ export const getColorFunction = (
   columnValues: number[],
 ) => {
   let minOpacity = MIN_OPACITY_BOUNDED;
-  const maxOpacity = MAX_OPACITY;
-
+  // get a max opacity if supplied, can result in slight rounding errors though
+  // also, force to RGbA hex string, color picker still returns {r, g, b, a}
+  const { rgb, alpha: maxOpacity = MAX_OPACITY } =
+    splitRgbAlpha(toRgbaHex(colorScheme)) || {};
   let comparatorFunction: (
     value: number,
     allValues: number[],
   ) => false | { cutoffValue: number; extremeValue: number };
-  if (operator === undefined || colorScheme === undefined) {
+  if (operator === undefined || rgb === undefined) {
     return () => undefined;
   }
   if (
@@ -174,41 +180,46 @@ export const getColorFunction = (
     const compareResult = comparatorFunction(value, columnValues);
     if (compareResult === false) return undefined;
     const { cutoffValue, extremeValue } = compareResult;
-    const opacity = getOpacity(
-      value,
-      cutoffValue,
-      extremeValue,
-      minOpacity,
-      maxOpacity,
+    return addAlpha(
+      rgb,
+      getOpacity(
+        value,
+        cutoffValue,
+        extremeValue,
+        minOpacity,
+        maxOpacity,
+        inverseScale && operator !== COMPARATOR.EQUAL,
+      ),
     );
-    return rgbToRgba(colorScheme, inverseScale ? 1 - opacity : opacity);
   };
 };
 
-export const getColorFormatters = (
-  columnConfig: ConditionalFormattingConfig[] | undefined,
-  data: DataRecord[],
-) =>
-  columnConfig?.reduce(
-    (acc: ColorFormatters, config: ConditionalFormattingConfig) => {
-      if (
-        config?.column !== undefined &&
-        (config?.operator === COMPARATOR.NONE ||
-          (config?.operator !== undefined &&
-            (MULTIPLE_VALUE_COMPARATORS.includes(config?.operator)
-              ? config?.targetValueLeft !== undefined &&
-                config?.targetValueRight !== undefined
-              : config?.targetValue !== undefined)))
-      ) {
-        acc.push({
-          column: config?.column,
-          getColorFromValue: getColorFunction(
-            config,
-            data.map(row => row[config.column!] as number),
-          ),
-        });
-      }
-      return acc;
-    },
-    [],
-  ) ?? [];
+export const getColorFormatters = memoizeOne(
+  (
+    columnConfig: ConditionalFormattingConfig[] | undefined,
+    data: DataRecord[],
+  ) =>
+    columnConfig?.reduce(
+      (acc: ColorFormatters, config: ConditionalFormattingConfig) => {
+        if (
+          config?.column !== undefined &&
+          (config?.operator === COMPARATOR.NONE ||
+            (config?.operator !== undefined &&
+              (MULTIPLE_VALUE_COMPARATORS.includes(config?.operator)
+                ? config?.targetValueLeft !== undefined &&
+                  config?.targetValueRight !== undefined
+                : config?.targetValue !== undefined)))
+        ) {
+          acc.push({
+            column: config?.column,
+            getColorFromValue: getColorFunction(
+              config,
+              data.map(row => row[config.column!] as number),
+            ),
+          });
+        }
+        return acc;
+      },
+      [],
+    ) ?? [],
+);

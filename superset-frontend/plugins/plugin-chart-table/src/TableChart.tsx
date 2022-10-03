@@ -33,15 +33,12 @@ import {
   ensureIsArray,
   GenericDataType,
   getTimeFormatterForGranularity,
+  styled,
   t,
   tn,
 } from '@superset-ui/core';
 
-import {
-  DataColumnMeta,
-  TableChartTransformedProps,
-  REACT_TABLE_ROW_NUMBER_COLUMN_ID,
-} from './types';
+import { DataColumnMeta, TableChartTransformedProps } from './types';
 import DataTable, {
   DataTableProps,
   SearchInputProps,
@@ -51,7 +48,11 @@ import DataTable, {
 
 import Styles from './Styles';
 import { formatColumnValue } from './utils/formatValue';
-import { PAGE_SIZE_OPTIONS } from './consts';
+import {
+  PAGE_SIZE_OPTIONS,
+  REACT_TABLE_ROW_NUMBER_COLUMN_ID,
+  REACT_TABLE_ROW_NUMBER_COLUMN_WIDTH,
+} from './consts';
 import { updateExternalFormData } from './DataTable/utils/externalAPIs';
 
 type ValueRange = [number, number];
@@ -165,6 +166,9 @@ function SelectPageSize({
   );
 }
 
+const getNoResultsMessage = (filter: string) =>
+  t(filter ? 'No matching records found' : 'No records found');
+
 export default function TableChart<D extends DataRecord = DataRecord>(
   props: TableChartTransformedProps<D> & {
     sticky?: DataTableProps<D>['sticky'];
@@ -192,8 +196,8 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     filters,
     sticky = true, // whether to use sticky header
     columnColorFormatters,
-    rearrangeColumns = false,
     numberRows = false,
+    allowRearrangeColumns = false,
   } = props;
   const timestampFormatter = useCallback(
     value => getTimeFormatterForGranularity(timeGrain)(value),
@@ -326,7 +330,6 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   const getColumnConfigs = useCallback(
     (column: DataColumnMeta, i: number): ColumnWithLooseAccessor<D> => {
       const { key, label, isNumeric, dataType, isMetric, config = {} } = column;
-      const isFilter = !isNumeric && emitFilter;
       const columnWidth = Number.isNaN(Number(config.columnWidth))
         ? config.columnWidth
         : Number(config.columnWidth);
@@ -359,7 +362,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         getValueRange(key, alignPositiveNegative);
 
       let className = '';
-      if (isFilter) {
+      if (emitFilter) {
         className += ' dt-is-filter';
       }
 
@@ -387,6 +390,20 @@ export default function TableChart<D extends DataRecord = DataRecord>(
               });
           }
 
+          const StyledCell = styled.td`
+            text-align: ${sharedStyle.textAlign};
+            background: ${backgroundColor ||
+            (valueRange
+              ? cellBar({
+                  value: value as number,
+                  valueRange,
+                  alignPositiveNegative,
+                  colorPositiveNegative,
+                })
+              : undefined)};
+            white-space: ${value instanceof Date ? 'nowrap' : undefined};
+          `;
+
           const cellProps = {
             // show raw number in title in case of numeric values
             title: typeof value === 'number' ? String(value) : undefined,
@@ -399,23 +416,10 @@ export default function TableChart<D extends DataRecord = DataRecord>(
               value == null ? 'dt-is-null' : '',
               isActiveFilterValue(key, value) ? ' dt-is-active-filter' : '',
             ].join(' '),
-            style: {
-              ...sharedStyle,
-              background:
-                backgroundColor ||
-                (valueRange
-                  ? cellBar({
-                      value: value as number,
-                      valueRange,
-                      alignPositiveNegative,
-                      colorPositiveNegative,
-                    })
-                  : undefined),
-            },
           };
           if (html) {
             // eslint-disable-next-line react/no-danger
-            return <td {...cellProps} dangerouslySetInnerHTML={html} />;
+            return <StyledCell {...cellProps} dangerouslySetInnerHTML={html} />;
           }
           // If cellProps renderes textContent already, then we don't have to
           // render `Cell`. This saves some time for large tables.
@@ -444,7 +448,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
             }}
             onClick={onClick}
             data-column-name={col.id}
-            {...(rearrangeColumns && {
+            {...(allowRearrangeColumns && {
               draggable: 'true',
               onDragStart,
               onDragOver: e => e.preventDefault(),
@@ -466,7 +470,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
               data-column-name={col.id}
               css={{
                 display: 'inline-flex',
-                alignItems: 'center',
+                alignItems: 'flex-end',
               }}
             >
               <span data-column-name={col.id}>{label}</span>
@@ -509,7 +513,7 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       cols.unshift({
         id: REACT_TABLE_ROW_NUMBER_COLUMN_ID,
         Header: <th>#</th>,
-        width: 50,
+        width: REACT_TABLE_ROW_NUMBER_COLUMN_WIDTH,
         disableGlobalFilter: true,
         disableSortBy: true,
       });
@@ -517,12 +521,12 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     return cols;
   }, [columnsMeta, getColumnConfigs, numberRows]);
 
-  const handleServerPaginationChange = (
-    pageNumber: number,
-    pageSize: number,
-  ) => {
-    updateExternalFormData(setDataMask, pageNumber, pageSize);
-  };
+  const handleServerPaginationChange = useCallback(
+    (pageNumber: number, pageSize: number) => {
+      updateExternalFormData(setDataMask, pageNumber, pageSize);
+    },
+    [setDataMask],
+  );
 
   return (
     <Styles>
@@ -539,13 +543,10 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         serverPagination={serverPagination}
         onServerPaginationChange={handleServerPaginationChange}
         onColumnOrderChange={() => setColumnOrderToggle(!columnOrderToggle)}
-        rearrangeColumns={rearrangeColumns}
         numberRows={numberRows}
         // 9 page items in > 340px works well even for 100+ pages
         maxPageItemCount={width > 340 ? 9 : 7}
-        noResults={(filter: string) =>
-          t(filter ? 'No matching records found' : 'No records found')
-        }
+        noResults={getNoResultsMessage}
         searchInput={includeSearch && SearchInput}
         selectPageSize={pageSize !== null && SelectPageSize}
         // not in use in Superset, but needed for unit tests
