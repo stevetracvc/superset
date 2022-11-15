@@ -199,11 +199,11 @@ export const FormattingPopoverContent = ({
           </Col>
         </Row>
       )}
-      <FormItem name="inverseScale" label={t('Inverse Scale')}>
-        <Checkbox checked={inverseScale} onChange={changeInverseScale} />
-      </FormItem>
     </>
   );
+
+  const theme = useTheme();
+  const colorScheme = colorSchemeOptions(theme);
 
   return (
     <Form
@@ -228,7 +228,16 @@ export const FormattingPopoverContent = ({
             name="colorScheme"
             label={t('Color scheme')}
             rules={rulesRequired}
-            initialValue={colorSchemeOptions[0].value}
+            initialValue={colorScheme[0].value}
+          >
+            <ColorPickerControl sketchPickerWidth={250} />
+          </FormItem>
+        </Col>
+        <Col span={7}>
+          <FormItem
+            name="inverseScale"
+            label={t('Inverse Scale')}
+            tooltip={t('Ignored when "=" operator is selected.')}
           >
             <Select ariaLabel={t('Color scheme')} options={colorSchemeOptions} />
           </FormItem>
