@@ -203,21 +203,11 @@ export const FormattingPopoverContent = ({
           </Col>
         </Row>
       )}
-      <FormItem name="inverseScale" label={t('Inverse Scale')}>
-        <Checkbox checked={inverseScale} onChange={changeInverseScale} />
-      </FormItem>
     </>
   );
 
   const theme = useTheme();
   const colorScheme = colorSchemeOptions(theme);
-  const [inverseScale, setInverseScale] = useState(
-    config?.inverseScale || false,
-  );
-
-  const changeInverseScale = () => {
-    setInverseScale(!inverseScale);
-  };
 
   return (
     <Form
@@ -251,7 +241,6 @@ export const FormattingPopoverContent = ({
           <FormItem
             name="inverseScale"
             label={t('Inverse Scale')}
-            rules={[{ required: true, message: '' }]}
             tooltip={t('Ignored when "=" operator is selected.')}
           >
             <Checkbox checked={inverseScale} onChange={changeInverseScale} />
