@@ -248,7 +248,10 @@ class ExtraCache:
             if isinstance(val, list):
                 return_val.extend(val)
             elif val:
-                return_val.append(val.rstrip())
+                try:
+                    return_val.append(val.rstrip())
+                except:
+                    return_val.append(val)
 
         if (not return_val) and default:
             # If no values are found, return the default provided.
@@ -341,6 +344,7 @@ class ExtraCache:
             ):
                 if remove_filter:
                     if column not in self.removed_filters:
+                        logger.info(f"XXXXXXXXXXXXXXXXXXX removing filter for column `{column}`")
                         self.removed_filters.append(column)
                 if column not in self.applied_filters:
                     self.applied_filters.append(column)
@@ -353,7 +357,7 @@ class ExtraCache:
 
                 try:
                     val = [x.rstrip("\r") for x in val]  # SRM
-                except TypeError:
+                except (TypeError, AttributeError):
                     pass
                 filters.append({"op": op, "col": column, "val": val})
 
