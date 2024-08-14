@@ -71,11 +71,11 @@ export type TableChartFormData = QueryFormData & {
   emit_filter?: boolean;
   time_grain_sqla?: TimeGranularity;
   column_config?: Record<string, ColumnConfig>;
-  rearrange_columns?: boolean;
+  allow_rearrange_columns?: boolean;
 };
 
 export interface TableChartProps extends ChartProps {
-  ownCurrentState: {
+  ownCurrentState?: {
     pageSize?: number;
     currentPage?: number;
   };
@@ -110,10 +110,8 @@ export interface TableChartTransformedProps<D extends DataRecord = DataRecord> {
   emitFilter?: boolean;
   onChangeFilter?: ChartProps['hooks']['onAddFilter'];
   columnColorFormatters?: ColorFormatters;
-  rearrangeColumns?: boolean;
   numberRows?: boolean;
+  allowRearrangeColumns?: boolean;
 }
-
-export const REACT_TABLE_ROW_NUMBER_COLUMN_ID = '-1';
 
 export default {};

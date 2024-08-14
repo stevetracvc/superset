@@ -17,14 +17,15 @@
  * under the License.
  */
 import React, { useState } from 'react';
-import { rgb } from 'd3-color';
-import { styled, t } from '@superset-ui/core';
+import { styled, SupersetTheme, t, useTheme } from '@superset-ui/core';
 import { Form, FormItem, FormProps } from 'src/components/Form';
 import Select from 'src/components/Select/Select';
 import { Col, Row } from 'src/components';
 import { InputNumber } from 'src/components/Input';
 import Checkbox from 'src/components/Checkbox';
 import Button from 'src/components/Button';
+import ColorPickerControl from 'src/explore/components/controls/ColorPickerControl';
+import { hexToRgb, rgbStringToRgbaObject } from 'src/utils/colorUtils';
 import {
   COMPARATOR,
   ConditionalFormattingConfig,
@@ -40,10 +41,13 @@ const JustifyEnd = styled.div`
   justify-content: flex-end;
 `;
 
-const colorSchemeOptions = [
-  { value: 'rgb(0,255,0)', label: t('green') },
-  { value: 'rgb(255,255,0)', label: t('yellow') },
-  { value: 'rgb(255,0,0)', label: t('red') },
+// not sure if we need this still. Using green for the default color in picker.
+const colorSchemeOptions = (theme: SupersetTheme) => [
+  {
+    // color picker still needs {r, g, b, a} for now
+    value: rgbStringToRgbaObject(hexToRgb(theme.colors.success.light1)),
+    label: t('green'),
+  },
 ];
 
 const operatorOptions = [
@@ -199,11 +203,11 @@ export const FormattingPopoverContent = ({
           </Col>
         </Row>
       )}
-      <FormItem name="inverseScale" label={t('Inverse Scale')}>
-        <Checkbox checked={inverseScale} onChange={changeInverseScale} />
-      </FormItem>
     </>
   );
+
+  const theme = useTheme();
+  const colorScheme = colorSchemeOptions(theme);
 
   return (
     <Form
@@ -223,14 +227,23 @@ export const FormattingPopoverContent = ({
             <Select ariaLabel={t('Select column')} options={columns} />
           </FormItem>
         </Col>
-        <Col span={12}>
+        <Col span={5}>
           <FormItem
             name="colorScheme"
-            label={t('Color scheme')}
+            label={t('Base Color')}
             rules={rulesRequired}
-            initialValue={colorSchemeOptions[0].value}
+            initialValue={colorScheme[0].value}
           >
-            <Select ariaLabel={t('Color scheme')} options={colorSchemeOptions} />
+            <ColorPickerControl sketchPickerWidth={250} />
+          </FormItem>
+        </Col>
+        <Col span={7}>
+          <FormItem
+            name="inverseScale"
+            label={t('Inverse Scale')}
+            tooltip={t('Ignored when "=" operator is selected.')}
+          >
+            <Checkbox checked={inverseScale} onChange={changeInverseScale} />
           </FormItem>
         </Col>
       </Row>

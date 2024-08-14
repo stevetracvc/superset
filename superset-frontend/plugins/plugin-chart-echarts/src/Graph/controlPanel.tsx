@@ -98,7 +98,7 @@ const controlPanel: ControlPanelConfig = {
       controlSetRows: [
         ['color_scheme'],
         ...legendSection,
-        [<h1 className="section-header">{t('Layout')}</h1>],
+        [<div className="section-header">{t('Layout')}</div>],
         [
           {
             name: 'layout',
@@ -320,6 +320,14 @@ const controlPanel: ControlPanelConfig = {
       ],
     },
   ],
+  denormalizeFormData: formData => ({
+    ...formData,
+    metric: formData.standardizedFormData.standardizedState.metrics[0],
+  }),
+  updateStandardizedState: (prevState, currState) => ({
+    ...currState,
+    metrics: [currState.metrics[0], ...prevState.metrics.slice(1)],
+  }),
 };
 
 export default controlPanel;

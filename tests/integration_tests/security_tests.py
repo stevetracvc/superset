@@ -32,7 +32,6 @@ from flask import current_app
 from superset.models.dashboard import Dashboard
 
 from superset import app, appbuilder, db, security_manager, viz, ConnectorRegistry
-from superset.connectors.druid.models import DruidCluster, DruidDatasource
 from superset.connectors.sqla.models import SqlaTable
 from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
 from superset.exceptions import SupersetSecurityException
@@ -40,6 +39,7 @@ from superset.models.core import Database
 from superset.models.slice import Slice
 from superset.sql_parse import Table
 from superset.utils.core import (
+    DatasourceType,
     backend,
     get_example_default_schema,
 )
@@ -121,7 +121,7 @@ class TestRolePermission(SupersetTestCase):
 
         ds_slices = (
             session.query(Slice)
-            .filter_by(datasource_type="table")
+            .filter_by(datasource_type=DatasourceType.TABLE)
             .filter_by(datasource_id=ds.id)
             .all()
         )
@@ -144,7 +144,7 @@ class TestRolePermission(SupersetTestCase):
         ds.schema_perm = None
         ds_slices = (
             session.query(Slice)
-            .filter_by(datasource_type="table")
+            .filter_by(datasource_type=DatasourceType.TABLE)
             .filter_by(datasource_id=ds.id)
             .all()
         )
@@ -273,91 +273,33 @@ class TestRolePermission(SupersetTestCase):
         session.delete(stored_table)
         session.commit()
 
-    @pytest.mark.usefixtures("load_world_bank_dashboard_with_slices")
-    def test_set_perm_druid_datasource(self):
-        self.create_druid_test_objects()
+    def test_set_perm_sqla_table_none(self):
         session = db.session
-        druid_cluster = (
-            session.query(DruidCluster).filter_by(cluster_name="druid_test").one()
+        table = SqlaTable(
+            schema="tmp_schema",
+            table_name="tmp_perm_table",
+            # Setting database_id instead of database will skip permission creation
+            database_id=get_example_database().id,
         )
-        datasource = DruidDatasource(
-            datasource_name="tmp_datasource",
-            cluster=druid_cluster,
-            cluster_id=druid_cluster.id,
-        )
-        session.add(datasource)
+        session.add(table)
         session.commit()
 
-        # store without a schema
-        stored_datasource = (
-            session.query(DruidDatasource)
-            .filter_by(datasource_name="tmp_datasource")
-            .one()
+        stored_table = (
+            session.query(SqlaTable).filter_by(table_name="tmp_perm_table").one()
         )
-        self.assertEqual(
-            stored_datasource.perm,
-            f"[druid_test].[tmp_datasource](id:{stored_datasource.id})",
-        )
-        self.assertIsNotNone(
+        # Assert no permission is created
+        self.assertIsNone(
             security_manager.find_permission_view_menu(
-                "datasource_access", stored_datasource.perm
+                "datasource_access", stored_table.perm
             )
         )
-        self.assertIsNone(stored_datasource.schema_perm)
-
-        # store with a schema
-        stored_datasource.datasource_name = "tmp_schema.tmp_datasource"
-        session.commit()
-        self.assertEqual(
-            stored_datasource.perm,
-            f"[druid_test].[tmp_schema.tmp_datasource](id:{stored_datasource.id})",
-        )
-        self.assertIsNotNone(
+        # Assert no bogus permission is created
+        self.assertIsNone(
             security_manager.find_permission_view_menu(
-                "datasource_access", stored_datasource.perm
+                "datasource_access", f"[None].[tmp_perm_table](id:{stored_table.id})"
             )
         )
-        self.assertIsNotNone(stored_datasource.schema_perm, "[druid_test].[tmp_schema]")
-        self.assertIsNotNone(
-            security_manager.find_permission_view_menu(
-                "schema_access", stored_datasource.schema_perm
-            )
-        )
-
-        session.delete(stored_datasource)
-        session.commit()
-
-    def test_set_perm_druid_cluster(self):
-        session = db.session
-        cluster = DruidCluster(cluster_name="tmp_druid_cluster")
-        session.add(cluster)
-
-        stored_cluster = (
-            session.query(DruidCluster)
-            .filter_by(cluster_name="tmp_druid_cluster")
-            .one()
-        )
-        self.assertEqual(
-            stored_cluster.perm, f"[tmp_druid_cluster].(id:{stored_cluster.id})"
-        )
-        self.assertIsNotNone(
-            security_manager.find_permission_view_menu(
-                "database_access", stored_cluster.perm
-            )
-        )
-
-        stored_cluster.cluster_name = "tmp_druid_cluster2"
-        session.commit()
-        self.assertEqual(
-            stored_cluster.perm, f"[tmp_druid_cluster2].(id:{stored_cluster.id})"
-        )
-        self.assertIsNotNone(
-            security_manager.find_permission_view_menu(
-                "database_access", stored_cluster.perm
-            )
-        )
-
-        session.delete(stored_cluster)
+        session.delete(table)
         session.commit()
 
     def test_set_perm_database(self):
@@ -389,28 +331,6 @@ class TestRolePermission(SupersetTestCase):
 
         session.delete(stored_db)
         session.commit()
-
-    def test_hybrid_perm_druid_cluster(self):
-        cluster = DruidCluster(cluster_name="tmp_druid_cluster3")
-        db.session.add(cluster)
-
-        id_ = (
-            db.session.query(DruidCluster.id)
-            .filter_by(cluster_name="tmp_druid_cluster3")
-            .scalar()
-        )
-
-        record = (
-            db.session.query(DruidCluster)
-            .filter_by(perm=f"[tmp_druid_cluster3].(id:{id_})")
-            .one()
-        )
-
-        self.assertEqual(record.get_perm(), record.perm)
-        self.assertEqual(record.id, id_)
-        self.assertEqual(record.cluster_name, "tmp_druid_cluster3")
-        db.session.delete(cluster)
-        db.session.commit()
 
     def test_hybrid_perm_database(self):
         database = Database(database_name="tmp_database3", sqlalchemy_uri="sqlite://")
@@ -446,7 +366,7 @@ class TestRolePermission(SupersetTestCase):
         # no schema permission
         slice = Slice(
             datasource_id=table.id,
-            datasource_type="table",
+            datasource_type=DatasourceType.TABLE,
             datasource_name="tmp_perm_table",
             slice_name="slice_name",
         )
@@ -595,15 +515,16 @@ class TestRolePermission(SupersetTestCase):
         for pvm in current_app.config["FAB_ROLES"]["TestRole"]:
             assert pvm in public_role_resource_names
 
+    @pytest.mark.usefixtures("load_world_bank_dashboard_with_slices")
     def test_sqllab_gamma_user_schema_access_to_sqllab(self):
         session = db.session
-
         example_db = session.query(Database).filter_by(database_name="examples").one()
         example_db.expose_in_sqllab = True
         session.commit()
 
         arguments = {
             "keys": ["none"],
+            "columns": ["expose_in_sqllab"],
             "filters": [{"col": "expose_in_sqllab", "opr": "eq", "value": True}],
             "order_columns": "database_name",
             "order_direction": "asc",
@@ -705,7 +626,6 @@ class TestRolePermission(SupersetTestCase):
 
         self.assertIn(("all_database_access", "all_database_access"), perm_set)
         self.assertIn(("can_override_role_permissions", "Superset"), perm_set)
-        self.assertIn(("can_sync_druid_source", "Superset"), perm_set)
         self.assertIn(("can_override_role_permissions", "Superset"), perm_set)
         self.assertIn(("can_approve", "Superset"), perm_set)
 
@@ -888,7 +808,10 @@ class TestRolePermission(SupersetTestCase):
             ["AuthDBView", "login"],
             ["AuthDBView", "logout"],
             ["CurrentUserRestApi", "get_me"],
+            ["CurrentUserRestApi", "get_my_roles"],
+            # TODO (embedded) remove Dashboard:embedded after uuids have been shipped
             ["Dashboard", "embedded"],
+            ["EmbeddedView", "embedded"],
             ["R", "index"],
             ["Superset", "log"],
             ["Superset", "theme"],
@@ -955,7 +878,10 @@ class TestSecurityManager(SupersetTestCase):
 
     @patch("superset.security.SupersetSecurityManager.can_access")
     @patch("superset.security.SupersetSecurityManager.can_access_schema")
-    def test_raise_for_access_datasource(self, mock_can_access_schema, mock_can_access):
+    @patch("superset.views.utils.is_owner")
+    def test_raise_for_access_datasource(
+        self, mock_can_access_schema, mock_can_access, mock_is_owner
+    ):
         datasource = self.get_datasource_mock()
 
         mock_can_access_schema.return_value = True
@@ -963,12 +889,14 @@ class TestSecurityManager(SupersetTestCase):
 
         mock_can_access.return_value = False
         mock_can_access_schema.return_value = False
+        mock_is_owner.return_value = False
 
         with self.assertRaises(SupersetSecurityException):
             security_manager.raise_for_access(datasource=datasource)
 
     @patch("superset.security.SupersetSecurityManager.can_access")
-    def test_raise_for_access_query(self, mock_can_access):
+    @patch("superset.views.utils.is_owner")
+    def test_raise_for_access_query(self, mock_can_access, mock_is_owner):
         query = Mock(
             database=get_example_database(), schema="bar", sql="SELECT * FROM foo"
         )
@@ -977,6 +905,7 @@ class TestSecurityManager(SupersetTestCase):
         security_manager.raise_for_access(query=query)
 
         mock_can_access.return_value = False
+        mock_is_owner.return_value = False
 
         with self.assertRaises(SupersetSecurityException):
             security_manager.raise_for_access(query=query)
@@ -1141,6 +1070,7 @@ class TestDatasources(SupersetTestCase):
 
 class FakeRequest:
     headers: Any = {}
+    form: Any = {}
 
 
 class TestGuestTokens(SupersetTestCase):
@@ -1182,6 +1112,17 @@ class TestGuestTokens(SupersetTestCase):
         token = self.create_guest_token()
         fake_request = FakeRequest()
         fake_request.headers[current_app.config["GUEST_TOKEN_HEADER_NAME"]] = token
+
+        guest_user = security_manager.get_guest_user_from_request(fake_request)
+
+        self.assertIsNotNone(guest_user)
+        self.assertEqual("test_guest", guest_user.username)
+
+    def test_get_guest_user_with_request_form(self):
+        token = self.create_guest_token()
+        fake_request = FakeRequest()
+        fake_request.headers[current_app.config["GUEST_TOKEN_HEADER_NAME"]] = None
+        fake_request.form["guest_token"] = token
 
         guest_user = security_manager.get_guest_user_from_request(fake_request)
 

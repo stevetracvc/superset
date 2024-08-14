@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 -r base.in
+-e .[postgres]
 gevent
 psycopg2-binary
 mysqlclient
@@ -22,4 +23,3 @@ pymysql
 #flask_oauthlib
 Authlib
 requests
-

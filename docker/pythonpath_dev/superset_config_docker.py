@@ -1,60 +1,69 @@
-import os
 import logging
-from flask_appbuilder.security.manager import AUTH_OAUTH
-from custom_sso_security_manager import CustomSsoSecurityManager
-CUSTOM_SECURITY_MANAGER = CustomSsoSecurityManager
+import os
+
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-AUTH_TYPE = AUTH_OAUTH
-#AUTH_USER_REGISTRATION = True
-#AUTH_USER_REGISTRATION_ROLE = "User_company_restricted_access" # "User_general_permissions"
+# AUTH_USER_REGISTRATION = True
+# AUTH_USER_REGISTRATION_ROLE = "User_company_restricted_access" # "User_general_permissions"
 
 import logging
+
 logger = logging.getLogger()
 
 try:
-    from superset_config_oauth import *  # noqa
     import superset_config_oauth
+    from custom_sso_security_manager import CustomSsoSecurityManager
+    from flask_appbuilder.security.manager import AUTH_OAUTH
+    from superset_config_oauth import (  # noqa
+        CLIENT_ID,
+        CLIENT_SECRET,
+        LOGOUT_REDIRECT_URI,
+    )
+
+    CUSTOM_SECURITY_MANAGER = CustomSsoSecurityManager
+    AUTH_TYPE = AUTH_OAUTH
 
     logger.info(
         f"Loaded your OAuth configuration at " f"[{superset_config_oauth.__file__}]"
     )
 except ImportError:
     logger.info("Using default Docker config...")
+    CLIENT_ID = ""
+    CLIENT_SECRET = ""
+    LOGOUT_REDIRECT_URI = ""
 
 
 COGNITO_URL = "https://tracvc.auth.us-west-2.amazoncognito.com/"
 
-OAUTH_PROVIDERS = [{
-    'name':'cognito',
-    'token_key': 'access_token',
-    'icon':'fa-amazon',
-    'url': COGNITO_URL,
-    'remote_app': {
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
-        'request_token_params': {
-            'scope': 'email openid profile'
+OAUTH_PROVIDERS = [
+    {
+        "name": "cognito",
+        "token_key": "access_token",
+        "icon": "fa-amazon",
+        "url": COGNITO_URL,
+        "remote_app": {
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "request_token_params": {"scope": "email openid profile"},
+            #        'response_type': 'token',
+            "response_type": "code",
+            "base_url": os.path.join(COGNITO_URL, "oauth2/idpresponse"),
+            "access_token_url": os.path.join(COGNITO_URL, "oauth2/token"),
+            "authorize_url": os.path.join(COGNITO_URL, "oauth2/authorize"),
+            "access_token_method": "POST",
+            "request_token_url": None,
+            #        'request_token_url': os.path.join(COGNITO_URL, 'oauth2/token'),
+            "api_base_url": COGNITO_URL,
+            "logout_url": os.path.join(COGNITO_URL, "logout"),
+            "logout_redirect_uri": LOGOUT_REDIRECT_URI,
         },
-#        'response_type': 'token',
-        'response_type': 'code',
-        'base_url': os.path.join(COGNITO_URL, 'oauth2/idpresponse'),
-        'access_token_url': os.path.join(COGNITO_URL, 'oauth2/token'),
-        'authorize_url': os.path.join(COGNITO_URL, 'oauth2/authorize'),
-        'access_token_method':'POST',
-        'request_token_url': None,
-#        'request_token_url': os.path.join(COGNITO_URL, 'oauth2/token'),
-        'api_base_url': COGNITO_URL,
-        'logout_url': os.path.join(COGNITO_URL, 'logout'),
-        'logout_redirect_uri': LOGOUT_REDIRECT_URI
-        }
     }
 ]
 
 FEATURE_FLAGS = {
     "DASHBOARD_NATIVE_FILTERS": True,
     "DASHBOARD_CROSS_FILTERS": True,
-#    "DASHBOARD_NATIVE_FILTERS_SET": True,
+    #    "DASHBOARD_NATIVE_FILTERS_SET": True,
     "DASHBOARD_FILTERS_EXPERIMENTAL": True,
     "ENABLE_EXPLORE_DRAG_AND_DROP": True,
     "ENABLE_DND_WITH_CLICK_UX": True,
@@ -62,8 +71,9 @@ FEATURE_FLAGS = {
     "ENABLE_TEMPLATE_REMOVE_FILTERS": True,
     "DYNAMIC_PLUGINS": False,
     "DASHBOARD_RBAC": True,
-    "ALERT_REPORTS": True,
+    "ALERT_REPORTS": False,
 #    "ENABLE_REACT_CRUD_VIEWS": True,
+    "DASHBOARD_EDIT_CHART_IN_NEW_TAB": True,
 }
 
 #
@@ -82,7 +92,7 @@ SESSION_COOKIE_HTTPONLY = False
 
 # when it's added to systemd
 # https://unix.stackexchange.com/questions/462075/systemd-service-not-recognizing-python-library
-SUPERSET_LOAD_EXAMPLES="no"
+SUPERSET_LOAD_EXAMPLES = "no"
 
 ROW_LIMIT = 50000
 VIZ_ROW_LIMIT = 10000000
@@ -98,23 +108,27 @@ LOGO_RIGHT_TEXT = "PRODUCTION"
 FAVICONS = [{"href": "/static/assets/images/cropped-TRAC_Icon-1-32x32.png"}]
 
 # not sure I need it
-#ENABLE_CORS = False
+# ENABLE_CORS = False
 ENABLE_CORS = True
 CORS_OPTIONS = {
-    'supports_credentials': True,
-    'allow_headers': [
-        'X-CSRFToken', 'Content-Type', 'Origin', 'X-Requested-With', 'Accept',
+    "supports_credentials": True,
+    "allow_headers": [
+        "X-CSRFToken",
+        "Content-Type",
+        "Origin",
+        "X-Requested-With",
+        "Accept",
     ],
-    'resources': [
-         '/superset/csrf_token/' , # auth
-         '/api/v1/formData/',  # sliceId => formData
-         '/superset/explore_json/*',  # legacy query API, formData => queryData
-         '/api/v1/query/',  # new query API, queryContext => queryData
-         '/superset/fetch_datasource_metadata/',  # datasource metadata
-         '/superset/dashboard/',  # datasource metadata
-         '/oauth-authorized/cognito',
+    "resources": [
+        "/superset/csrf_token/",  # auth
+        "/api/v1/formData/",  # sliceId => formData
+        "/superset/explore_json/*",  # legacy query API, formData => queryData
+        "/api/v1/query/",  # new query API, queryContext => queryData
+        "/superset/fetch_datasource_metadata/",  # datasource metadata
+        "/superset/dashboard/",  # datasource metadata
+        "/oauth-authorized/cognito",
     ],
-    'origins': ['https://tracvc.ddns.net'],
+    "origins": ["https://tracvc.ddns.net"],
 }
 
 # we might need to update this more...
@@ -126,7 +140,6 @@ SMTP_USER = "superset"
 SMTP_PORT = 25
 SMTP_PASSWORD = "superset"
 SMTP_MAIL_FROM = "admin@tracvc.com"
-
 
 
 CACHE_CONFIG = {
@@ -147,4 +160,29 @@ DATA_CACHE_CONFIG = {
 ENABLE_PROXY_FIX = True
 PROXY_FIX_CONFIG = {"x_for": 1, "x_proto": 1, "x_host": 1, "x_port": 0, "x_prefix": 1}
 SUPERSET_WEBSERVER_PROTOCOL = "https"
+
+
+def custom_escape_array(array, original, replacement):
+    return [x.replace(original, replacement) for x in array]
+
+def custom_escape_array2(array, pairs):
+    arr = array
+    for pair in pairs:
+        arr = [x.replace(pair[0], pair[1]) for x in arr]
+    return arr
+
+def flatten(arr_2d):
+    return [item for row in arr_2d for item in row]
+
+
+import metaphone
+
+
+JINJA_CONTEXT_ADDONS = {
+    'custom_escape_array': custom_escape_array,
+    'custom_escape_array2': custom_escape_array2,
+    'dm': metaphone.dm,
+    'flatten': flatten,
+    'map': map,
+}
 

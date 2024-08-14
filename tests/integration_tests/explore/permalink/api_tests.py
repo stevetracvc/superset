@@ -27,6 +27,7 @@ from superset.key_value.models import KeyValueEntry
 from superset.key_value.types import KeyValueResource
 from superset.key_value.utils import decode_permalink_id, encode_permalink_key
 from superset.models.slice import Slice
+from superset.utils.core import DatasourceType
 from tests.integration_tests.base_tests import login
 from tests.integration_tests.fixtures.client import client
 from tests.integration_tests.fixtures.world_bank_dashboard import (
@@ -63,7 +64,8 @@ def permalink_salt() -> Iterator[str]:
     yield salt
     namespace = get_uuid_namespace(salt)
     db.session.query(KeyValueEntry).filter_by(
-        resource=KeyValueResource.APP, uuid=uuid3(namespace, key),
+        resource=KeyValueResource.APP,
+        uuid=uuid3(namespace, key),
     )
     db.session.commit()
 
@@ -96,7 +98,8 @@ def test_get_missing_chart(client, chart, permalink_salt: str) -> None:
         value=pickle.dumps(
             {
                 "chartId": chart_id,
-                "datasetId": chart.datasource.id,
+                "datasourceId": chart.datasource.id,
+                "datasourceType": DatasourceType.TABLE,
                 "formData": {
                     "slice_id": chart_id,
                     "datasource": f"{chart.datasource.id}__{chart.datasource.type}",

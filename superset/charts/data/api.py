@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import simplejson
@@ -26,7 +27,7 @@ from flask_appbuilder.api import expose, protect
 from flask_babel import gettext as _
 from marshmallow import ValidationError
 
-from superset import is_feature_enabled, security_manager, db
+from superset import db, is_feature_enabled, security_manager
 from superset.charts.api import ChartRestApi
 from superset.charts.commands.exceptions import (
     ChartDataCacheLoadError,
@@ -43,12 +44,11 @@ from superset.common.chart_data import ChartDataResultFormat, ChartDataResultTyp
 from superset.connectors.base.models import BaseDatasource
 from superset.exceptions import QueryObjectValidationError
 from superset.extensions import event_logger
+from superset.models.slice import Slice
 from superset.utils.async_query_manager import AsyncQueryTokenException
 from superset.utils.core import create_zip, json_int_dttm_ser
 from superset.views.base import CsvResponse, generate_download_headers
 from superset.views.base_api import statsd_metrics
-from superset.models.slice import Slice
-from datetime import datetime
 
 if TYPE_CHECKING:
     from superset.common.query_context import QueryContext
@@ -356,14 +356,13 @@ class ChartDataRestApi(ChartRestApi):
                 # return single query results csv format
                 data = result["queries"][0]["data"]
                 # Load slice_name for a more useful CSV filename
-                slice_id = form_data["slice_id"]
+                slice_id = form_data["slice_id"] if form_data else None
                 slices = db.session.query(Slice).filter_by(id=slice_id).all()
                 slice_name = slices[0]
                 now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
                 fname = f"{slice_name}_{now_str}"
                 return CsvResponse(
-                    data,
-                    headers=generate_download_headers("csv", fname)
+                    data, headers=generate_download_headers("csv", fname)
                 )
 
             # return multi-query csv results bundled as a zip file
