@@ -65,8 +65,10 @@ FEATURE_FLAGS = {
     "DASHBOARD_CROSS_FILTERS": True,
     #    "DASHBOARD_NATIVE_FILTERS_SET": True,
     "DASHBOARD_FILTERS_EXPERIMENTAL": True,
-    "ENABLE_EXPLORE_DRAG_AND_DROP": False,
+    "ENABLE_EXPLORE_DRAG_AND_DROP": True,
+    "ENABLE_DND_WITH_CLICK_UX": True,
     "ENABLE_TEMPLATE_PROCESSING": True,
+    "ENABLE_TEMPLATE_REMOVE_FILTERS": True,
     "DYNAMIC_PLUGINS": True,
     "DASHBOARD_RBAC": True,
     #    "ENABLE_REACT_CRUD_VIEWS": True,
@@ -93,6 +95,8 @@ SUPERSET_LOAD_EXAMPLES = "no"
 
 ROW_LIMIT = 50000
 VIZ_ROW_LIMIT = 10000000
+SQL_MAX_ROW = 10000000
+DISPLAY_MAX_ROWS = 1000000
 # max rows retreieved when requesting samples from datasource in explore view
 SAMPLES_ROW_LIMIT = 1000
 # max rows retrieved by filter select auto complete
@@ -140,13 +144,36 @@ SMTP_MAIL_FROM = "admin@tracvc.com"
 
 CACHE_CONFIG = {
     "CACHE_TYPE": "redis",
-    "CACHE_DEFAULT_TIMEOUT": 60 * 60 * 24,  # 1 day default (in secs)
+    "CACHE_DEFAULT_TIMEOUT": 60 * 60 * 24 * 30,  # 30 days (in secs)
     "CACHE_KEY_PREFIX": "superset_results",
     #    'CACHE_REDIS_URL': 'redis://localhost:6379/0',
     "CACHE_REDIS_URL": "redis://redis:6379/0",
 }
+DATA_CACHE_CONFIG = {
+    **CACHE_CONFIG,
+    'CACHE_KEY_PREFIX': 'superset_results_data',
+}
+FILTER_STATE_CACHE_CONFIG = {
+    **CACHE_CONFIG,
+    'CACHE_KEY_PREFIX': 'superset_results_filter',
+}
+EXPLORE_FORM_DATA_CACHE_CONFIG = {
+    **CACHE_CONFIG,
+    'CACHE_KEY_PREFIX': 'superset_results_explore',
+}
 
-
+from celery.schedules import crontab
+CELERYBEAT_SCHEDULE = {
+    'cache-warmup-hourly': {
+        'task': 'cache-warmup',
+        'schedule': crontab(minute=9, hour='*'),  # hourly
+        'kwargs': {
+            'strategy_name': 'top_n_dashboards',
+            'top_n': 5,
+            'since': '7 days ago',
+        },
+    },
+}
 # Use all X-Forwarded headers when ENABLE_PROXY_FIX is True.
 # When proxying to a different port, set "x_port" to 0 to avoid downstream issues.
 ENABLE_PROXY_FIX = True
