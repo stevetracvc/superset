@@ -298,10 +298,15 @@ export default function TableChart<D extends DataRecord = DataRecord>(
       let updatedFilters = { ...(filters || {}) };
       const target = getEmitTarget(key);
       if (filters && isActiveFilterValue(target, val)) {
-        updatedFilters = {};
+// SRM allow multiple cross-filter values
+//        updatedFilters = {};
+        updatedFilters = {
+          // filter out the clicked value
+          [target]: filters[target].filter((item) => item !== val),
+        };
       } else {
         updatedFilters = {
-          [target]: [val],
+          [target]: [val, ...(Object.hasOwn(updatedFilters, target) ? updatedFilters[target] : [])],
         };
       }
       if (
