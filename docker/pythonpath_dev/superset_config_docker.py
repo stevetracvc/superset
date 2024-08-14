@@ -179,3 +179,29 @@ CELERYBEAT_SCHEDULE = {
 ENABLE_PROXY_FIX = True
 PROXY_FIX_CONFIG = {"x_for": 1, "x_proto": 1, "x_host": 1, "x_port": 0, "x_prefix": 1}
 SUPERSET_WEBSERVER_PROTOCOL = "https"
+
+
+def custom_escape_array(array, original, replacement):
+    return [x.replace(original, replacement) for x in array]
+
+def custom_escape_array2(array, pairs):
+    arr = array
+    for pair in pairs:
+        arr = [x.replace(pair[0], pair[1]) for x in arr]
+    return arr
+
+def flatten(arr_2d):
+    return [item for row in arr_2d for item in row]
+
+
+import metaphone
+
+
+JINJA_CONTEXT_ADDONS = {
+    'custom_escape_array': custom_escape_array,
+    'custom_escape_array2': custom_escape_array2,
+    'dm': metaphone.dm,
+    'flatten': flatten,
+    'map': map,
+}
+
