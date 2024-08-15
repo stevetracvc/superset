@@ -1,69 +1,60 @@
-import logging
 import os
-
+import logging
+from flask_appbuilder.security.manager import AUTH_OAUTH
+from custom_sso_security_manager import CustomSsoSecurityManager
+CUSTOM_SECURITY_MANAGER = CustomSsoSecurityManager
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# AUTH_USER_REGISTRATION = True
-# AUTH_USER_REGISTRATION_ROLE = "User_company_restricted_access" # "User_general_permissions"
+AUTH_TYPE = AUTH_OAUTH
+#AUTH_USER_REGISTRATION = True
+#AUTH_USER_REGISTRATION_ROLE = "User_company_restricted_access" # "User_general_permissions"
 
 import logging
-
 logger = logging.getLogger()
 
 try:
+    from superset_config_oauth import *  # noqa
     import superset_config_oauth
-    from custom_sso_security_manager import CustomSsoSecurityManager
-    from flask_appbuilder.security.manager import AUTH_OAUTH
-    from superset_config_oauth import (  # noqa
-        CLIENT_ID,
-        CLIENT_SECRET,
-        LOGOUT_REDIRECT_URI,
-    )
-
-    CUSTOM_SECURITY_MANAGER = CustomSsoSecurityManager
-    AUTH_TYPE = AUTH_OAUTH
 
     logger.info(
         f"Loaded your OAuth configuration at " f"[{superset_config_oauth.__file__}]"
     )
 except ImportError:
     logger.info("Using default Docker config...")
-    CLIENT_ID = ""
-    CLIENT_SECRET = ""
-    LOGOUT_REDIRECT_URI = ""
 
 
 COGNITO_URL = "https://tracvc.auth.us-west-2.amazoncognito.com/"
 
-OAUTH_PROVIDERS = [
-    {
-        "name": "cognito",
-        "token_key": "access_token",
-        "icon": "fa-amazon",
-        "url": COGNITO_URL,
-        "remote_app": {
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
-            "request_token_params": {"scope": "email openid profile"},
-            #        'response_type': 'token',
-            "response_type": "code",
-            "base_url": os.path.join(COGNITO_URL, "oauth2/idpresponse"),
-            "access_token_url": os.path.join(COGNITO_URL, "oauth2/token"),
-            "authorize_url": os.path.join(COGNITO_URL, "oauth2/authorize"),
-            "access_token_method": "POST",
-            "request_token_url": None,
-            #        'request_token_url': os.path.join(COGNITO_URL, 'oauth2/token'),
-            "api_base_url": COGNITO_URL,
-            "logout_url": os.path.join(COGNITO_URL, "logout"),
-            "logout_redirect_uri": LOGOUT_REDIRECT_URI,
+OAUTH_PROVIDERS = [{
+    'name':'cognito',
+    'token_key': 'access_token',
+    'icon':'fa-amazon',
+    'url': COGNITO_URL,
+    'remote_app': {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'request_token_params': {
+            'scope': 'email openid profile'
         },
+#        'response_type': 'token',
+        'response_type': 'code',
+        'base_url': os.path.join(COGNITO_URL, 'oauth2/idpresponse'),
+        'access_token_url': os.path.join(COGNITO_URL, 'oauth2/token'),
+        'authorize_url': os.path.join(COGNITO_URL, 'oauth2/authorize'),
+        'access_token_method':'POST',
+        'request_token_url': None,
+#        'request_token_url': os.path.join(COGNITO_URL, 'oauth2/token'),
+        'api_base_url': COGNITO_URL,
+        'logout_url': os.path.join(COGNITO_URL, 'logout'),
+        'logout_redirect_uri': LOGOUT_REDIRECT_URI
+        }
     }
 ]
 
 FEATURE_FLAGS = {
     "DASHBOARD_NATIVE_FILTERS": True,
     "DASHBOARD_CROSS_FILTERS": True,
-    #    "DASHBOARD_NATIVE_FILTERS_SET": True,
+#    "DASHBOARD_NATIVE_FILTERS_SET": True,
     "DASHBOARD_FILTERS_EXPERIMENTAL": True,
     "ENABLE_EXPLORE_DRAG_AND_DROP": True,
     "ENABLE_DND_WITH_CLICK_UX": True,
@@ -71,9 +62,8 @@ FEATURE_FLAGS = {
     "ENABLE_TEMPLATE_REMOVE_FILTERS": True,
     "DYNAMIC_PLUGINS": False,
     "DASHBOARD_RBAC": True,
-    "ALERT_REPORTS": False,
+    "ALERT_REPORTS": True,
 #    "ENABLE_REACT_CRUD_VIEWS": True,
-    "DASHBOARD_EDIT_CHART_IN_NEW_TAB": True,
 }
 
 #
@@ -92,10 +82,12 @@ SESSION_COOKIE_HTTPONLY = False
 
 # when it's added to systemd
 # https://unix.stackexchange.com/questions/462075/systemd-service-not-recognizing-python-library
-SUPERSET_LOAD_EXAMPLES = "no"
+SUPERSET_LOAD_EXAMPLES="no"
 
 ROW_LIMIT = 50000
 VIZ_ROW_LIMIT = 10000000
+SQL_MAX_ROW = 10000000
+DISPLAY_MAX_ROWS = 1000000
 # max rows retreieved when requesting samples from datasource in explore view
 SAMPLES_ROW_LIMIT = 1000
 # max rows retrieved by filter select auto complete
@@ -108,27 +100,23 @@ LOGO_RIGHT_TEXT = "PRODUCTION"
 FAVICONS = [{"href": "/static/assets/images/cropped-TRAC_Icon-1-32x32.png"}]
 
 # not sure I need it
-# ENABLE_CORS = False
+#ENABLE_CORS = False
 ENABLE_CORS = True
 CORS_OPTIONS = {
-    "supports_credentials": True,
-    "allow_headers": [
-        "X-CSRFToken",
-        "Content-Type",
-        "Origin",
-        "X-Requested-With",
-        "Accept",
+    'supports_credentials': True,
+    'allow_headers': [
+        'X-CSRFToken', 'Content-Type', 'Origin', 'X-Requested-With', 'Accept',
     ],
-    "resources": [
-        "/superset/csrf_token/",  # auth
-        "/api/v1/formData/",  # sliceId => formData
-        "/superset/explore_json/*",  # legacy query API, formData => queryData
-        "/api/v1/query/",  # new query API, queryContext => queryData
-        "/superset/fetch_datasource_metadata/",  # datasource metadata
-        "/superset/dashboard/",  # datasource metadata
-        "/oauth-authorized/cognito",
+    'resources': [
+         '/superset/csrf_token/' , # auth
+         '/api/v1/formData/',  # sliceId => formData
+         '/superset/explore_json/*',  # legacy query API, formData => queryData
+         '/api/v1/query/',  # new query API, queryContext => queryData
+         '/superset/fetch_datasource_metadata/',  # datasource metadata
+         '/superset/dashboard/',  # datasource metadata
+         '/oauth-authorized/cognito',
     ],
-    "origins": ["https://tracvc.ddns.net"],
+    'origins': ['https://tracvc.ddns.net'],
 }
 
 # we might need to update this more...
@@ -142,19 +130,43 @@ SMTP_PASSWORD = "superset"
 SMTP_MAIL_FROM = "admin@tracvc.com"
 
 
+
 CACHE_CONFIG = {
-    'CACHE_TYPE': 'redis',
-    'CACHE_DEFAULT_TIMEOUT': 60 * 60 * 24 * 30, # 30 day (in secs)
-    'CACHE_KEY_PREFIX': 'superset_results',
-#    'CACHE_REDIS_URL': 'redis://localhost:6379/0',
-    'CACHE_REDIS_URL': 'redis://redis:6379/0',
+    "CACHE_TYPE": "redis",
+    "CACHE_DEFAULT_TIMEOUT": 60 * 60 * 24 * 30,  # 30 days (in secs)
+    "CACHE_KEY_PREFIX": "superset_results",
+    #    'CACHE_REDIS_URL': 'redis://localhost:6379/0',
+    "CACHE_REDIS_URL": "redis://redis:6379/0",
 }
 DATA_CACHE_CONFIG = {
     **CACHE_CONFIG,
     'CACHE_KEY_PREFIX': 'superset_results_data',
 }
+FILTER_STATE_CACHE_CONFIG = {
+    **CACHE_CONFIG,
+    'CACHE_KEY_PREFIX': 'superset_results_filter',
+}
+EXPLORE_FORM_DATA_CACHE_CONFIG = {
+    **CACHE_CONFIG,
+    'CACHE_KEY_PREFIX': 'superset_results_explore',
+}
 
+"""
+let's cancel the scheduler
 
+from celery.schedules import crontab
+CELERYBEAT_SCHEDULE = {
+    'cache-warmup-hourly': {
+        'task': 'cache-warmup',
+        'schedule': crontab(minute=9, hour='*'),  # hourly
+        'kwargs': {
+            'strategy_name': 'top_n_dashboards',
+            'top_n': 5,
+            'since': '7 days ago',
+        },
+    },
+}
+"""
 # Use all X-Forwarded headers when ENABLE_PROXY_FIX is True.
 # When proxying to a different port, set "x_port" to 0 to avoid downstream issues.
 ENABLE_PROXY_FIX = True

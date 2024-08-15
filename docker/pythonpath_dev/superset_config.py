@@ -72,18 +72,20 @@ RESULTS_BACKEND = FileSystemCache("/app/superset_home/sqllab")
 
 class CeleryConfig(object):
     BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CELERY_DB}"
-    CELERY_IMPORTS = ("superset.sql_lab",)
+    CELERY_IMPORTS = ("superset.sql_lab", "superset.tasks")
     CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_RESULTS_DB}"
     CELERYD_LOG_LEVEL = "DEBUG"
     CELERYD_PREFETCH_MULTIPLIER = 1
     CELERY_ACKS_LATE = False
     CELERYBEAT_SCHEDULE = {
-        "reports.scheduler": {
-            "task": "reports.scheduler",
-            "schedule": crontab(minute="*", hour="*"),
-        },
+#        "reports.scheduler": {
+#            "task": "reports.scheduler",
+##            "schedule": crontab(minute="*", hour="*"),
+#            "schedule": crontab(minute="0", hour="0"),
+#        },
         "reports.prune_log": {
             "task": "reports.prune_log",
+#            "schedule": crontab(minute=10, hour=0),
             "schedule": crontab(minute=10, hour=0),
         },
     }
@@ -113,3 +115,5 @@ try:
     )
 except ImportError:
     logger.info("Using default Docker config...")
+
+
